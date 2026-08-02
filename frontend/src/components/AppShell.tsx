@@ -24,6 +24,7 @@ export function AppShell() {
           <nav className="hidden items-center gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200 sm:flex" aria-label="Main navigation">
             <NavItem to="/" label="Home" />
             <NavItem to="/history" label="History" />
+            <NavItem to="/profile" label="Profile" />
           </nav>
           <div className="flex items-center gap-3">
             <ThemeToggle compact />
@@ -42,9 +43,10 @@ export function AppShell() {
         </div>
       </header>
       <Outlet />
-      <nav className="safe-bottom fixed inset-x-3 bottom-2 z-40 grid grid-cols-2 rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden" aria-label="Mobile navigation">
+      <nav className="safe-bottom fixed inset-x-3 bottom-2 z-40 grid grid-cols-3 rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden" aria-label="Mobile navigation">
         <MobileNavItem to="/" label="Home" icon="⌂" />
         <MobileNavItem to="/history" label="History" icon="◷" />
+        <MobileNavItem to="/profile" label="Profile" icon="◎" />
       </nav>
     </div>
   );

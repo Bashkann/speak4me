@@ -7,6 +7,7 @@ import { AuthPage } from './pages/AuthPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { HomePage } from './pages/HomePage';
 import { WaitingPage } from './pages/WaitingPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ToastViewport } from './components/ToastViewport';
 import { PageTransition } from './components/PageTransition';
 
@@ -25,6 +26,7 @@ export function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
             <Route path="/history" element={<PageTransition><HistoryPage /></PageTransition>} />
+            <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
             <Route path="/waiting" element={<PageTransition><WaitingPage /></PageTransition>} />
           </Route>
         </Route>
