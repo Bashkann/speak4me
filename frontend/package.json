@@ -16,7 +16,7 @@
     "livekit-client": "^2.9.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.2",
+    "react-router-dom": "^7.18.2",
     "socket.io-client": "^4.8.1",
     "zustand": "^5.0.3"
   },

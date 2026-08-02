@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 export function useAbsoluteCountdown(deadline: string | null): number | null {
-  const calculate = () => deadline ? Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / 1000)) : null;
+  const calculate = () => remainingSeconds(deadline);
   const [remainingSec, setRemainingSec] = useState<number | null>(calculate);
 
   useEffect(() => {
@@ -12,4 +12,8 @@ export function useAbsoluteCountdown(deadline: string | null): number | null {
   }, [deadline]);
 
   return remainingSec;
+}
+
+export function remainingSeconds(deadline: string | null, now = Date.now()): number | null {
+  return deadline ? Math.max(0, Math.ceil((new Date(deadline).getTime() - now) / 1000)) : null;
 }

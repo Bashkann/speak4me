@@ -51,7 +51,7 @@ export class VoiceService {
     });
     return {
       token: await accessToken.toJwt(),
-      url: this.config.LIVEKIT_URL,
+      url: this.config.LIVEKIT_PUBLIC_URL ?? this.config.LIVEKIT_URL,
       canPublish,
     };
   }

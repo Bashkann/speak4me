@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ensureQueued, leaveQueue } from '../api/matchmaking';
+import { ensureQueued, getMatchmakingStatus, leaveQueue } from '../api/matchmaking';
 import { getApiErrorMessage } from '../lib/api-error';
 import { createSocket } from '../lib/socket';
 import { useAuthStore } from '../store/auth-store';
+import { useToastStore } from '../store/toast-store';
 
 export function WaitingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const addToast = useToastStore((state) => state.add);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const [socketError, setSocketError] = useState<string | null>(null);
+  const reconnectToastShown = useRef(false);
 
   const queueQuery = useQuery({
     queryKey: ['ensure-queued', user?.id],
@@ -42,9 +45,25 @@ export function WaitingPage() {
   useEffect(() => {
     if (queueQuery.data?.state !== 'queued') return;
     const socket = createSocket('/me');
+    let active = true;
+    const openRoom = (roomId: string) => {
+      if (!active) return;
+      queryClient.removeQueries({ queryKey: ['ensure-queued', user?.id] });
+      navigate(`/rooms/${roomId}`, { replace: true });
+    };
     socket.on('connect', () => {
       setSocketState('connected');
       setSocketError(null);
+      reconnectToastShown.current = false;
+      // A match can be committed between the queue REST response and this socket
+      // subscribing. Re-checking on every connection closes that event-loss window.
+      void getMatchmakingStatus()
+        .then((status) => {
+          if (status.state === 'matched') openRoom(status.roomId);
+        })
+        .catch(() => {
+          if (active) addToast('warning', 'Could not confirm matchmaking status. Still listening for a match.');
+        });
     });
     socket.on('disconnect', (reason) => {
       if (reason !== 'io client disconnect') setSocketState('reconnecting');
@@ -52,15 +71,17 @@ export function WaitingPage() {
     socket.on('connect_error', (error) => {
       setSocketState('reconnecting');
       setSocketError(error.message);
+      if (!reconnectToastShown.current) {
+        reconnectToastShown.current = true;
+        addToast('warning', 'Realtime matchmaking was interrupted. Reconnecting automatically.');
+      }
     });
-    socket.on('matched', ({ roomId }: { roomId: string }) => {
-      queryClient.removeQueries({ queryKey: ['ensure-queued', user?.id] });
-      navigate(`/rooms/${roomId}`, { replace: true });
-    });
+    socket.on('matched', ({ roomId }: { roomId: string }) => openRoom(roomId));
     return () => {
+      active = false;
       socket.disconnect();
     };
-  }, [navigate, queryClient, queueQuery.data?.state, user?.id]);
+  }, [addToast, navigate, queryClient, queueQuery.data?.state, user?.id]);
 
   return (
     <main className="relative grid min-h-[calc(100vh-7rem)] place-items-center overflow-hidden px-5 py-12">

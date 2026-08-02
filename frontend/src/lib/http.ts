@@ -1,6 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/auth-store';
 import type { AuthTokens } from '../types/api';
+import { useToastStore } from '../store/toast-store';
 
 export const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000/api';
 
@@ -12,6 +13,30 @@ export const http = axios.create({
 
 const refreshClient = axios.create({ baseURL: API_URL, timeout: 15_000 });
 let refreshPromise: Promise<AuthTokens> | null = null;
+
+export function refreshAccessToken(): Promise<AuthTokens> {
+  const refreshToken = useAuthStore.getState().refreshToken;
+  if (!refreshToken) {
+    useAuthStore.getState().clearSession();
+    return Promise.reject(new Error('A refresh token is required.'));
+  }
+
+  refreshPromise ??= refreshClient
+    .post<AuthTokens>('/auth/refresh', { refreshToken })
+    .then(({ data }) => {
+      useAuthStore.getState().updateTokens(data);
+      return data;
+    })
+    .catch((error: unknown) => {
+      useAuthStore.getState().clearSession();
+      useToastStore.getState().add('warning', 'Your session expired. Please log in again.');
+      throw error;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
+}
 
 http.interceptors.request.use((config) => {
   const accessToken = useAuthStore.getState().accessToken;
@@ -32,28 +57,12 @@ http.interceptors.response.use(
       throw error;
     }
 
-    const refreshToken = useAuthStore.getState().refreshToken;
-    if (!refreshToken) {
-      useAuthStore.getState().clearSession();
-      throw error;
-    }
-
     request._retry = true;
     try {
-      refreshPromise ??= refreshClient
-        .post<AuthTokens>('/auth/refresh', { refreshToken })
-        .then(({ data }) => {
-          useAuthStore.getState().updateTokens(data);
-          return data;
-        })
-        .finally(() => {
-          refreshPromise = null;
-        });
-      const tokens = await refreshPromise;
+      const tokens = await refreshAccessToken();
       request.headers.Authorization = `Bearer ${tokens.accessToken}`;
       return http(request);
     } catch (refreshError) {
-      useAuthStore.getState().clearSession();
       throw refreshError;
     }
   },

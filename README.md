@@ -2,6 +2,8 @@
 
 Backend v1 for four-person English speaking practice sessions. It provides a REST API, JWT-authenticated Socket.IO channels, PostgreSQL matchmaking and recoverable timers, plus self-hosted LiveKit audio permissions.
 
+The repository also includes a React test frontend in [`frontend/`](frontend/README.md) that exercises the complete multi-user and LiveKit flow.
+
 ## Quick start
 
 Requirements: Docker with Compose. The API image uses Node.js 20 and PostgreSQL 16.
@@ -17,6 +19,7 @@ The stack automatically applies Prisma migrations and seeds 30 topics plus eight
 - OpenAPI JSON: `http://localhost:3000/openapi.json`
 - LiveKit WebSocket: `ws://localhost:7880`
 - PostgreSQL: `localhost:5432`
+- Web test app (Docker): `http://localhost:5174`
 
 Health checks are available at both `/healthz` and `/api/healthz`. The Docker development LiveKit credentials are `devkey` / `secret`; change them outside local development.
 
@@ -52,7 +55,8 @@ The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycl
 | `JWT_REFRESH_SECRET` | 32+ chars | Refresh-token signing key |
 | `ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
 | `REFRESH_TOKEN_TTL_DAYS` | `30` | Refresh token lifetime |
-| `LIVEKIT_URL` | `ws://localhost:7880` | Client LiveKit URL; converted to HTTP for server RPC |
+| `LIVEKIT_URL` | `ws://localhost:7880` | Server-side LiveKit URL; converted to HTTP for RPC |
+| `LIVEKIT_PUBLIC_URL` | optional | Browser-facing LiveKit URL when it differs from `LIVEKIT_URL` (for example in Docker) |
 | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | dev credentials | LiveKit token/RPC credentials |
 | `MATCHMAKING_INTERVAL_MS` | `3000` | Queue scan interval |
 | `MATCHMAKING_WIDEN_AFTER_SEC` | `120` | Wait before widening level range |

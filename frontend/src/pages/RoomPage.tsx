@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Socket } from 'socket.io-client';
-import { getRoom } from '../api/rooms';
+import { getRoom, leaveRoom } from '../api/rooms';
 import { Brand } from '../components/Brand';
 import { useAbsoluteCountdown } from '../hooks/useAbsoluteCountdown';
 import { useLiveKitAudio, type MicrophoneState } from '../hooks/useLiveKitAudio';
@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '../lib/api-error';
 import { createSocket } from '../lib/socket';
 import { useAuthStore } from '../store/auth-store';
 import { useRoomStore, type RoundSummary } from '../store/room-store';
+import { useToastStore } from '../store/toast-store';
 import type { Pair, RoomParticipant, RoomStatus } from '../types/rooms';
 
 export function RoomPage() {
@@ -18,7 +19,10 @@ export function RoomPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const session = useRoomStore();
+  const addToast = useToastStore((state) => state.add);
   const socketRef = useRef<Socket | null>(null);
+  const reconnectToastShown = useRef(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const countdown = useAbsoluteCountdown(session.deadline);
   const currentParticipant = session.room?.participants.find((participant) => participant.userId === user?.id);
   const currentRole = session.speakingPair && currentParticipant ? (currentParticipant.pair === session.speakingPair ? 'speaker' : 'listener') : null;
@@ -32,7 +36,9 @@ export function RoomPage() {
   });
 
   useEffect(() => {
-    if (roomQuery.data) session.hydrate(roomQuery.data);
+    // The socket may deliver a newer transition while the initial REST request is
+    // still in flight. Never let that older bootstrap snapshot roll state back.
+    if (roomQuery.data && !useRoomStore.getState().room) session.hydrate(roomQuery.data);
   }, [roomQuery.data, session.hydrate]);
 
   useEffect(() => {
@@ -50,12 +56,19 @@ export function RoomPage() {
 
     socket.on('connect', () => {
       session.setSocketState('connected');
+      reconnectToastShown.current = false;
       socket.emit('join', { roomId });
     });
     socket.on('disconnect', (reason) => {
       if (reason !== 'io client disconnect') session.setSocketState('reconnecting');
     });
-    socket.on('connect_error', () => session.setSocketState('reconnecting'));
+    socket.on('connect_error', () => {
+      session.setSocketState('reconnecting');
+      if (!reconnectToastShown.current) {
+        reconnectToastShown.current = true;
+        addToast('warning', 'Room connection interrupted. Rejoining automatically within the grace period.');
+      }
+    });
     socket.on('room_state', session.hydrate);
     socket.on('participant_joined', ({ userId }: { userId: string }) => {
       session.setParticipantConnected(userId, true);
@@ -74,23 +87,35 @@ export function RoomPage() {
       session.abort(humanizeReason(reason));
       socket.disconnect();
     });
-    socket.on('error', (error: { message?: string }) => {
-      if (error.message) session.abort(error.message);
-    });
+    socket.on('error', (error: { message?: string }) => addToast('error', error.message ?? 'A room connection error occurred.'));
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [queryClient, roomId, session.abort, session.finish, session.hydrate, session.roundBreak, session.roomReady, session.roundStarted, session.setParticipantConnected, session.setSocketState]);
+  }, [addToast, queryClient, roomId, session.abort, session.finish, session.hydrate, session.roundBreak, session.roomReady, session.roundStarted, session.setParticipantConnected, session.setSocketState]);
+
+  useEffect(() => {
+    if (audio.microphoneError) addToast('warning', audio.microphoneError);
+  }, [addToast, audio.microphoneError]);
 
   useEffect(() => () => session.reset(), [session.reset]);
 
-  const leave = () => {
-    socketRef.current?.emit('leave');
-    socketRef.current?.disconnect();
-    session.reset();
-    navigate('/', { replace: true });
+  const leave = async () => {
+    if (!roomId || isLeaving) return;
+    setIsLeaving(true);
+    try {
+      // The REST endpoint makes the explicit leave durable even if the socket
+      // closes before its fire-and-forget `leave` event reaches the server.
+      await leaveRoom(roomId);
+    } catch (error) {
+      addToast('warning', getApiErrorMessage(error, 'The server could not confirm that you left the room.'));
+    } finally {
+      socketRef.current?.emit('leave');
+      socketRef.current?.disconnect();
+      session.reset();
+      navigate('/', { replace: true });
+    }
   };
 
   if (roomQuery.isLoading && !session.room) return <RoomLoading />;
@@ -110,7 +135,7 @@ export function RoomPage() {
           <Brand />
           <div className="flex items-center gap-3">
             <ConnectionPill state={session.socketState} />
-            <button type="button" onClick={leave} className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">Leave</button>
+            <button type="button" onClick={() => void leave()} disabled={isLeaving} className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60">{isLeaving ? 'Leaving…' : 'Leave'}</button>
           </div>
         </div>
       </header>

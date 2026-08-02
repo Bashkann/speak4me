@@ -11,6 +11,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_TTL: z.string().regex(durationPattern).default('15m'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   LIVEKIT_URL: z.string().url(),
+  LIVEKIT_PUBLIC_URL: z.string().url().optional(),
   LIVEKIT_API_KEY: z.string().min(1),
   LIVEKIT_API_SECRET: z.string().min(1),
   MATCHMAKING_INTERVAL_MS: z.coerce.number().int().positive().default(3000),

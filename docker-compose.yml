@@ -34,6 +34,7 @@ services:
       ACCESS_TOKEN_TTL: 15m
       REFRESH_TOKEN_TTL_DAYS: 30
       LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_PUBLIC_URL: ws://localhost:7880
       LIVEKIT_API_KEY: devkey
       LIVEKIT_API_SECRET: secret
       MATCHMAKING_INTERVAL_MS: 3000
@@ -50,6 +51,17 @@ services:
         condition: service_started
     ports:
       - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3000/api
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-5174}:80"
 
 volumes:
   postgres_data:
