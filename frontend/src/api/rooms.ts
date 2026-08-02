@@ -1,5 +1,5 @@
 import { http } from '../lib/http';
-import type { RoomSnapshot, SessionHistoryResponse } from '../types/rooms';
+import type { RoomSnapshot, SessionHistoryResponse, VoiceTokenResponse } from '../types/rooms';
 
 export async function createPrivateRoom(roundDurationSec = 420): Promise<RoomSnapshot> {
   return (await http.post<RoomSnapshot>('/rooms', { roundDurationSec })).data;
@@ -15,6 +15,10 @@ export async function getRoom(roomId: string): Promise<RoomSnapshot> {
 
 export async function leaveRoom(roomId: string): Promise<void> {
   await http.post(`/rooms/${roomId}/leave`);
+}
+
+export async function getVoiceToken(roomId: string): Promise<VoiceTokenResponse> {
+  return (await http.post<VoiceTokenResponse>(`/rooms/${roomId}/voice-token`)).data;
 }
 
 export async function getSessionHistory(page: number, limit = 10): Promise<SessionHistoryResponse> {

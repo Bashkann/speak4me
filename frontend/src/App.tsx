@@ -1,11 +1,13 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicOnly, RequireAuth } from './components/RequireAuth';
 import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { HomePage } from './pages/HomePage';
-import { RoomPage } from './pages/RoomPage';
 import { WaitingPage } from './pages/WaitingPage';
+
+const RoomPage = lazy(() => import('./pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 
 export function App() {
   return (
@@ -14,7 +16,7 @@ export function App() {
         <Route path="/auth" element={<AuthPage />} />
       </Route>
       <Route element={<RequireAuth />}>
-        <Route path="/rooms/:roomId" element={<RoomPage />} />
+        <Route path="/rooms/:roomId" element={<Suspense fallback={<div className="grid min-h-screen place-items-center bg-canvas text-sm font-semibold text-slate-500">Loading room…</div>}><RoomPage /></Suspense>} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/history" element={<HistoryPage />} />

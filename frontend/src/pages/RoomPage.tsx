@@ -5,6 +5,7 @@ import type { Socket } from 'socket.io-client';
 import { getRoom } from '../api/rooms';
 import { Brand } from '../components/Brand';
 import { useAbsoluteCountdown } from '../hooks/useAbsoluteCountdown';
+import { useLiveKitAudio, type MicrophoneState } from '../hooks/useLiveKitAudio';
 import { getApiErrorMessage } from '../lib/api-error';
 import { createSocket } from '../lib/socket';
 import { useAuthStore } from '../store/auth-store';
@@ -19,6 +20,10 @@ export function RoomPage() {
   const session = useRoomStore();
   const socketRef = useRef<Socket | null>(null);
   const countdown = useAbsoluteCountdown(session.deadline);
+  const currentParticipant = session.room?.participants.find((participant) => participant.userId === user?.id);
+  const currentRole = session.speakingPair && currentParticipant ? (currentParticipant.pair === session.speakingPair ? 'speaker' : 'listener') : null;
+  const audioEnabled = Boolean(session.room && !['finished', 'aborted'].includes(session.room.status));
+  const audio = useLiveKitAudio({ roomId, enabled: audioEnabled, shouldPublish: currentRole === 'speaker' });
   const roomQuery = useQuery({
     queryKey: ['room', roomId],
     queryFn: () => getRoom(roomId!),
@@ -128,7 +133,7 @@ export function RoomPage() {
             <section>
               <div className="grid gap-4 sm:grid-cols-2">
                 {[1, 2, 3, 4].map((seat) => (
-                  <SeatCard key={seat} seat={seat} participant={room.participants.find((item) => item.seat === seat)} speakingPair={session.speakingPair} currentUserId={user?.id} />
+                  <SeatCard key={seat} seat={seat} participant={room.participants.find((item) => item.seat === seat)} speakingPair={session.speakingPair} currentUserId={user?.id} audioLevel={audio.audioLevels[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? 0} microphoneOn={audio.microphoneEnabled[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? false} />
                 ))}
               </div>
             </section>
@@ -151,9 +156,7 @@ export function RoomPage() {
                 {session.topic ? <h2 className="mt-4 font-display text-xl font-extrabold leading-7 text-ink">“{session.topic}”</h2> : <p className="mt-4 text-sm leading-6 text-slate-500">The topic appears when the speaking round begins.</p>}
               </section>
 
-              <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                <div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-lg">🎧</span><div><h3 className="text-sm font-extrabold">Audio joins next</h3><p className="mt-1 text-xs leading-5 text-slate-500">Roles and realtime state are live. Microphone controls are added in the next milestone.</p></div></div>
-              </section>
+              <AudioControls role={myRole} audio={audio} />
             </aside>
           </div>
         )}
@@ -162,7 +165,7 @@ export function RoomPage() {
   );
 }
 
-function SeatCard({ seat, participant, speakingPair, currentUserId }: { seat: number; participant?: RoomParticipant; speakingPair: Pair | null; currentUserId?: string }) {
+function SeatCard({ seat, participant, speakingPair, currentUserId, audioLevel, microphoneOn }: { seat: number; participant?: RoomParticipant; speakingPair: Pair | null; currentUserId?: string; audioLevel: number; microphoneOn: boolean }) {
   if (!participant) return <div className="grid min-h-52 place-items-center rounded-3xl border-2 border-dashed border-slate-300 bg-white/50 p-6 text-center"><div><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-400">{seat}</span><p className="mt-3 text-sm font-semibold text-slate-400">Waiting for someone…</p></div></div>;
   const isSpeaker = speakingPair === participant.pair;
   const isMe = participant.userId === currentUserId;
@@ -174,7 +177,7 @@ function SeatCard({ seat, participant, speakingPair, currentUserId }: { seat: nu
       </div>
       <h2 className="mt-5 font-display text-xl font-extrabold text-ink">{participant.displayName}{isMe && <span className="ml-2 text-xs font-bold text-brand-700">You</span>}</h2>
       <p className="mt-1 text-sm font-medium text-slate-400">Level {participant.englishLevel} · Seat {participant.seat}</p>
-      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"><span className="text-xs font-semibold text-slate-400">{participant.connected ? 'In the room' : 'Reconnecting…'}</span><span className={`grid h-8 w-8 place-items-center rounded-full ${isSpeaker ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-400'}`}><MicIcon muted={!isSpeaker} /></span></div>
+      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"><span className="text-xs font-semibold text-slate-400">{audioLevel > 0.05 ? 'Speaking now' : participant.connected ? 'In the room' : 'Reconnecting…'}</span><div className="flex items-center gap-2"><AudioMeter level={audioLevel} /><span className={`grid h-8 w-8 place-items-center rounded-full ${microphoneOn ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-400'}`}><MicIcon muted={!microphoneOn} /></span></div></div>
     </article>
   );
 }
@@ -187,6 +190,30 @@ function ConnectionPill({ state }: { state: 'connecting' | 'connected' | 'reconn
   return <span className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold sm:inline-flex ${state === 'connected' ? 'bg-brand-50 text-brand-800' : 'bg-amber-50 text-amber-700'}`}><span className={`h-2 w-2 rounded-full ${state === 'connected' ? 'bg-brand-500' : 'animate-pulse bg-amber-500'}`} />{state === 'connected' ? 'Live' : 'Reconnecting'}</span>;
 }
 
+function AudioControls({ role, audio }: { role: 'speaker' | 'listener' | null; audio: ReturnType<typeof useLiveKitAudio> }) {
+  const connected = audio.connectionState === 'connected';
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-400">Live audio</p><p className={`mt-1 text-sm font-extrabold ${connected ? 'text-brand-700' : 'text-amber-700'}`}>{connected ? 'Connected' : audio.connectionState === 'connecting' ? 'Connecting…' : 'Disconnected'}</p></div>
+        {role === 'speaker' ? (
+          <button type="button" onClick={() => void audio.toggleMicrophone()} disabled={!connected || audio.microphoneState === 'starting'} aria-label={audio.microphoneState === 'on' ? 'Mute microphone' : 'Unmute microphone'}
+            className={`grid h-12 w-12 place-items-center rounded-full transition ${audio.microphoneState === 'on' ? 'bg-brand-700 text-white hover:bg-brand-800' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
+            <MicIcon muted={audio.microphoneState !== 'on'} />
+          </button>
+        ) : <span className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-slate-400"><MicIcon muted /></span>}
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-500">{microphoneHint(role, audio.microphoneState)}</p>
+      {audio.microphoneError && <div role="alert" className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-5 text-amber-800">{audio.microphoneError}</div>}
+      {audio.playbackBlocked && <button type="button" className="secondary-button mt-3 w-full !py-2 text-xs" onClick={() => void audio.resumeAudio()}>Enable audio playback</button>}
+    </section>
+  );
+}
+
+function AudioMeter({ level }: { level: number }) {
+  return <span className="flex h-6 items-end gap-0.5" aria-label={level > 0.05 ? 'Speaking' : 'Silent'}>{[0.15, 0.35, 0.6].map((threshold, index) => <span key={threshold} className={`w-1 rounded-full transition-all ${level > threshold ? 'bg-brand-500' : 'bg-slate-200'}`} style={{ height: `${8 + index * 5}px` }} />)}</span>;
+}
+
 function FinishedPanel({ summary }: { summary: RoundSummary[] }) {
   return <section className="mx-auto max-w-2xl rounded-[2rem] border border-brand-200 bg-white p-7 text-center shadow-soft sm:p-10"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand-100 text-3xl">✓</span><p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Session complete</p><h1 className="mt-3 font-display text-4xl font-extrabold">Well spoken.</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">You completed both roles. This session is now saved to your history.</p>{summary.length > 0 && <div className="mt-7 space-y-2 text-left">{summary.map((round) => <div key={round.round} className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><strong className="mr-2 text-ink">Round {round.round}</strong>{round.topicText}</div>)}</div>}<div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link to="/history" className="secondary-button">View history</Link><Link to="/" className="primary-button">Back to home</Link></div></section>;
 }
@@ -196,10 +223,11 @@ function AbortedPanel({ reason }: { reason: string }) {
 }
 
 function RoomLoading() { return <main className="grid min-h-screen place-items-center bg-canvas"><div className="text-center"><span className="mx-auto block h-11 w-11 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" /><p className="mt-4 text-sm font-semibold text-slate-500">Joining room…</p></div></main>; }
-function MicIcon({ muted }: { muted: boolean }) { return <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 5.5 1.7M5 10v2a7 7 0 0 0 11.6 5.3M12 19v3M8 22h8M3 3l18 18" strokeLinecap="round" />{!muted && <path d="M15 10V5a3 3 0 0 0-5.6-1.5M19 10v2a7 7 0 0 1-.5 2.6" strokeLinecap="round" />}</svg>; }
+function MicIcon({ muted }: { muted: boolean }) { return <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" strokeLinecap="round" strokeLinejoin="round" />{muted && <path d="m3 3 18 18" strokeLinecap="round" />}</svg>; }
 function StatusDot({ status }: { status: RoomStatus }) { const active = ['round1', 'round2'].includes(status); return <span className={`h-3 w-3 rounded-full ${active ? 'animate-pulse bg-brand-500' : status === 'aborted' ? 'bg-red-500' : status === 'finished' ? 'bg-brand-500' : 'bg-amber-400'}`} />; }
 function statusTitle(status: RoomStatus, round: number | null): string { return ({ waiting: 'Waiting for the room', ready: 'Everyone is ready', round1: `Round ${round ?? 1} in progress`, break: 'Round break', round2: `Round ${round ?? 2} in progress`, finished: 'Session complete', aborted: 'Session aborted' })[status]; }
 function timerLabel(status: RoomStatus): string { return status === 'ready' ? 'Starts in' : status === 'break' ? 'Next round in' : 'Time left'; }
 function formatTime(seconds: number): string { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`; }
 function initials(name: string): string { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join(''); }
 function humanizeReason(reason: string): string { return ({ participant_reconnect_timeout: 'A participant did not reconnect within the grace period.', no_active_topics: 'No suitable conversation topics were available.' } as Record<string, string>)[reason] ?? reason.replaceAll('_', ' '); }
+function microphoneHint(role: 'speaker' | 'listener' | null, state: MicrophoneState): string { if (role === 'listener') return 'Listen-only mode. The server prevents microphone publishing for this round.'; if (role !== 'speaker') return 'Your microphone stays untouched until your speaking turn begins.'; return ({ off: 'Your microphone is off. Select the button to try again.', starting: 'Requesting microphone access…', on: 'Your microphone is live. Select the button to mute.', muted: 'You are muted. Select the button to speak.', denied: 'Microphone access is blocked. Update browser permissions and retry.' })[state]; }

@@ -38,3 +38,9 @@ export interface SessionHistoryResponse {
   limit: number;
   total: number;
 }
+
+export interface VoiceTokenResponse {
+  url: string;
+  token: string;
+  canPublish: boolean;
+}
