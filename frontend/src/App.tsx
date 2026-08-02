@@ -5,7 +5,7 @@ import { AuthPage } from './pages/AuthPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { HomePage } from './pages/HomePage';
 import { RoomPlaceholderPage } from './pages/RoomPlaceholderPage';
-import { WaitingPlaceholderPage } from './pages/WaitingPlaceholderPage';
+import { WaitingPage } from './pages/WaitingPage';
 
 export function App() {
   return (
@@ -17,7 +17,7 @@ export function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/history" element={<HistoryPage />} />
-          <Route path="/waiting" element={<WaitingPlaceholderPage />} />
+          <Route path="/waiting" element={<WaitingPage />} />
           <Route path="/rooms/:roomId" element={<RoomPlaceholderPage />} />
         </Route>
       </Route>
