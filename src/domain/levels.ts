@@ -1,6 +1,6 @@
 import type { EnglishLevel } from '@prisma/client';
 
-export const LEVELS: EnglishLevel[] = ['A2', 'B1', 'B2', 'C1'];
+export const LEVELS: EnglishLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export function levelDistance(first: EnglishLevel, second: EnglishLevel): number {
   return Math.abs(LEVELS.indexOf(first) - LEVELS.indexOf(second));

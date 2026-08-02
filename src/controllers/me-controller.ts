@@ -18,4 +18,8 @@ export class MeController {
     const { page, limit } = paginationSchema.parse(req.query);
     res.json(await this.service.sessions(req.auth!.userId, page, limit));
   };
+
+  stats = async (req: Request, res: Response) => {
+    res.json(await this.service.stats(req.auth!.userId));
+  };
 }

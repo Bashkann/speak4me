@@ -28,7 +28,7 @@ export function configureSockets(
       if (!raw) throw new AppError(401, 'AUTH_REQUIRED', 'Socket access token is required');
       const payload = tokens.verifyAccess(raw);
       const user = await users.findById(payload.sub);
-      if (!user || user.isBanned) throw new AppError(401, 'AUTH_REQUIRED', 'Socket user is unavailable');
+      if (!user || user.isBanned || user.suspendedAt) throw new AppError(401, 'AUTH_REQUIRED', 'Socket user is unavailable');
       socket.data.userId = user.id;
       next();
     } catch (error) {

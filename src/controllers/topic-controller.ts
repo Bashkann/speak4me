@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { TopicRepository } from '../repositories/topic-repository';
+import { topicLevelSchema } from '../schemas/common';
 
-const querySchema = z.object({ level: z.enum(['A2', 'B1', 'B2', 'C1', 'ALL']).optional() });
+const querySchema = z.object({ level: topicLevelSchema.optional() });
 
 export class TopicController {
   constructor(private readonly topics: TopicRepository) {}

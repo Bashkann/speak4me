@@ -13,7 +13,8 @@ export function createAuthMiddleware(tokens: TokenService, users: UserRepository
     const user = await users.findById(payload.sub);
     if (!user) throw new AppError(401, 'AUTH_REQUIRED', 'User no longer exists');
     if (user.isBanned) throw new AppError(403, 'USER_BANNED', 'This account is banned');
-    req.auth = { userId: user.id, englishLevel: user.englishLevel };
+    if (user.suspendedAt) throw new AppError(403, 'USER_SUSPENDED', 'This account is suspended');
+    req.auth = { userId: user.id, englishLevel: user.englishLevel, role: user.role };
     next();
   });
 }

@@ -59,6 +59,21 @@ async function main(): Promise<void> {
       },
     });
   }
+
+  await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: { displayName: 'Speak Four Admin', role: 'ADMIN', suspendedAt: null },
+    create: {
+      email: 'admin@example.com',
+      passwordHash,
+      displayName: 'Speak Four Admin',
+      englishLevel: 'C1',
+      nativeLanguage: 'English',
+      goals: ['community'],
+      interests: ['culture', 'technology'],
+      role: 'ADMIN',
+    },
+  });
 }
 
 main()

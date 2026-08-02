@@ -4,6 +4,7 @@ import { loginSchema, logoutSchema, refreshSchema, registerSchema } from './sche
 import { englishLevelSchema, errorSchema, idParamsSchema, paginationSchema } from './schemas/common';
 import { updateMeSchema } from './schemas/me';
 import { createRoomSchema, joinRoomSchema, reportSchema } from './schemas/rooms';
+import { adminCreateTopicSchema, adminUpdateReportSchema, adminUpdateTopicSchema, adminUpdateUserSchema, adminUsersQuerySchema } from './schemas/admin';
 
 extendZodWithOpenApi(z);
 
@@ -47,7 +48,8 @@ registry.registerPath({
 });
 
 const userSchema = z.object({
-  id: z.string().uuid(), email: z.string().email(), displayName: z.string(), englishLevel: englishLevelSchema, createdAt: z.string().datetime(),
+  id: z.string().uuid(), email: z.string().email(), displayName: z.string(), englishLevel: englishLevelSchema,
+  nativeLanguage: z.string().nullable(), goals: z.array(z.string()), interests: z.array(z.string()), role: z.enum(['USER', 'ADMIN']), createdAt: z.string().datetime(),
 });
 registry.registerPath({ method: 'get', path: '/api/me', tags: ['Me'], security, responses: { 200: json(userSchema), ...errors } });
 registry.registerPath({
@@ -61,8 +63,12 @@ registry.registerPath({
   responses: { 200: json(z.object({ items: z.array(z.unknown()), page: z.number(), limit: z.number(), total: z.number() })), ...errors },
 });
 registry.registerPath({
+  method: 'get', path: '/api/me/stats', tags: ['Me'], security,
+  responses: { 200: json(z.object({ sessionsCompleted: z.number().int(), totalPracticeMinutes: z.number().int(), lastSessionDate: z.string().datetime().nullable() })), ...errors },
+});
+registry.registerPath({
   method: 'get', path: '/api/topics', tags: ['Topics'], security,
-  request: { query: z.object({ level: z.enum(['A2', 'B1', 'B2', 'C1', 'ALL']).optional() }) },
+  request: { query: z.object({ level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'ALL']).optional() }) },
   responses: { 200: json(z.object({ items: z.array(z.object({ id: z.string().uuid(), textEn: z.string(), level: z.string() })) })), ...errors },
 });
 
@@ -90,6 +96,18 @@ registry.registerPath({
   method: 'post', path: '/api/rooms', tags: ['Rooms'], security, summary: 'Create a private room',
   request: { body: { content: { 'application/json': { schema: createRoomSchema } } } }, responses: { 201: json(roomSchema), ...errors },
 });
+
+registry.registerPath({ method: 'get', path: '/api/admin/stats', tags: ['Admin'], security, responses: { 200: json(z.object({ users: z.number(), activeRooms: z.number(), sessionsToday: z.number(), queueLength: z.number() })), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/admin/users', tags: ['Admin'], security, request: { query: adminUsersQuerySchema }, responses: { 200: json(z.object({ items: z.array(userSchema.extend({ suspendedAt: z.string().datetime().nullable() })), page: z.number(), limit: z.number(), total: z.number() })), ...errors } });
+registry.registerPath({ method: 'patch', path: '/api/admin/users/{id}', tags: ['Admin'], security, request: { params: idParamsSchema, body: { content: { 'application/json': { schema: adminUpdateUserSchema } } } }, responses: { 200: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/admin/rooms', tags: ['Admin'], security, responses: { 200: json(z.object({ items: z.array(z.unknown()) })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/admin/rooms/{id}/close', tags: ['Admin'], security, request: { params: idParamsSchema }, responses: { 200: json(z.object({ closed: z.boolean() })), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/admin/reports', tags: ['Admin'], security, responses: { 200: json(z.object({ items: z.array(z.unknown()) })), ...errors } });
+registry.registerPath({ method: 'patch', path: '/api/admin/reports/{id}', tags: ['Admin'], security, request: { params: idParamsSchema, body: { content: { 'application/json': { schema: adminUpdateReportSchema } } } }, responses: { 200: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/admin/topics', tags: ['Admin'], security, responses: { 200: json(z.object({ items: z.array(z.unknown()) })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/admin/topics', tags: ['Admin'], security, request: { body: { content: { 'application/json': { schema: adminCreateTopicSchema } } } }, responses: { 201: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'patch', path: '/api/admin/topics/{id}', tags: ['Admin'], security, request: { params: idParamsSchema, body: { content: { 'application/json': { schema: adminUpdateTopicSchema } } } }, responses: { 200: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'delete', path: '/api/admin/topics/{id}', tags: ['Admin'], security, request: { params: idParamsSchema }, responses: { 204: { description: 'Topic archived' }, ...errors } });
 registry.registerPath({
   method: 'post', path: '/api/rooms/join', tags: ['Rooms'], security, summary: 'Join a private room',
   request: { body: { content: { 'application/json': { schema: joinRoomSchema } } } }, responses: { 200: json(roomSchema), ...errors },

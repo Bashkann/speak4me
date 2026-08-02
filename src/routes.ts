@@ -3,14 +3,17 @@ import rateLimit from 'express-rate-limit';
 import type { RequestHandler } from 'express';
 import { asyncHandler } from './lib/errors';
 import type { AuthController } from './controllers/auth-controller';
+import type { AdminController } from './controllers/admin-controller';
 import type { MatchmakingController } from './controllers/matchmaking-controller';
 import type { MeController } from './controllers/me-controller';
 import type { ReportController } from './controllers/report-controller';
 import type { RoomController } from './controllers/room-controller';
 import type { TopicController } from './controllers/topic-controller';
+import { requireAdmin } from './middleware/admin';
 
 export interface Controllers {
   auth: AuthController;
+  admin: AdminController;
   me: MeController;
   topics: TopicController;
   matchmaking: MatchmakingController;
@@ -38,6 +41,7 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.get('/me', asyncHandler(controllers.me.get));
   api.patch('/me', asyncHandler(controllers.me.update));
   api.get('/me/sessions', asyncHandler(controllers.me.sessions));
+  api.get('/me/stats', asyncHandler(controllers.me.stats));
   api.get('/topics', asyncHandler(controllers.topics.list));
   api.post('/matchmaking/queue', asyncHandler(controllers.matchmaking.enqueue));
   api.delete('/matchmaking/queue', asyncHandler(controllers.matchmaking.leave));
@@ -48,5 +52,18 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.get('/rooms/:id', asyncHandler(controllers.rooms.get));
   api.post('/rooms/:id/voice-token', asyncHandler(controllers.rooms.voiceToken));
   api.post('/reports', asyncHandler(controllers.reports.create));
+
+  api.use('/admin', requireAdmin);
+  api.get('/admin/stats', asyncHandler(controllers.admin.stats));
+  api.get('/admin/users', asyncHandler(controllers.admin.users));
+  api.patch('/admin/users/:id', asyncHandler(controllers.admin.updateUser));
+  api.get('/admin/rooms', asyncHandler(controllers.admin.rooms));
+  api.post('/admin/rooms/:id/close', asyncHandler(controllers.admin.closeRoom));
+  api.get('/admin/reports', asyncHandler(controllers.admin.reports));
+  api.patch('/admin/reports/:id', asyncHandler(controllers.admin.updateReport));
+  api.get('/admin/topics', asyncHandler(controllers.admin.topics));
+  api.post('/admin/topics', asyncHandler(controllers.admin.createTopic));
+  api.patch('/admin/topics/:id', asyncHandler(controllers.admin.updateTopic));
+  api.delete('/admin/topics/:id', asyncHandler(controllers.admin.deleteTopic));
   return api;
 }

@@ -5,7 +5,7 @@ import { AuthRepository } from '../repositories/auth-repository';
 import { UserRepository } from '../repositories/user-repository';
 import { TokenService } from './token-service';
 
-type PublicUser = Pick<User, 'id' | 'email' | 'displayName' | 'englishLevel' | 'createdAt'>;
+type PublicUser = Pick<User, 'id' | 'email' | 'displayName' | 'englishLevel' | 'nativeLanguage' | 'goals' | 'interests' | 'role' | 'createdAt'>;
 
 export class AuthService {
   constructor(
@@ -14,7 +14,7 @@ export class AuthService {
     private readonly tokens: TokenService,
   ) {}
 
-  async register(input: { email: string; password: string; displayName: string; englishLevel: EnglishLevel }) {
+  async register(input: { email: string; password: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage?: string; goals?: string[]; interests?: string[] }) {
     if (await this.users.findByEmail(input.email)) {
       throw new AppError(409, 'EMAIL_IN_USE', 'An account with this email already exists');
     }
@@ -29,6 +29,7 @@ export class AuthService {
       throw new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
     }
     if (user.isBanned) throw new AppError(403, 'USER_BANNED', 'This account is banned');
+    if (user.suspendedAt) throw new AppError(403, 'USER_SUSPENDED', 'This account is suspended');
     return { user: this.publicUser(user), ...(await this.issuePair(user)) };
   }
 
@@ -39,7 +40,7 @@ export class AuthService {
       throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Refresh token is invalid or revoked');
     }
     const user = await this.users.findById(payload.sub);
-    if (!user || user.isBanned) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'User is unavailable');
+    if (!user || user.isBanned || user.suspendedAt) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'User is unavailable');
     await this.auth.revokeRefreshToken(stored.id);
     return this.issuePair(user);
   }
@@ -62,7 +63,7 @@ export class AuthService {
   }
 
   private publicUser(user: User): PublicUser {
-    const { id, email, displayName, englishLevel, createdAt } = user;
-    return { id, email, displayName, englishLevel, createdAt };
+    const { id, email, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt } = user;
+    return { id, email, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt };
   }
 }

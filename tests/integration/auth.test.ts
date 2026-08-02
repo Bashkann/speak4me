@@ -13,8 +13,18 @@ class MemoryUsers {
   values: User[] = [];
   findByEmail(email: string) { return Promise.resolve(this.values.find((user) => user.email === email) ?? null); }
   findById(id: string) { return Promise.resolve(this.values.find((user) => user.id === id) ?? null); }
-  create(data: { email: string; passwordHash: string; displayName: string; englishLevel: EnglishLevel }) {
-    const user: User = { id: `00000000-0000-4000-8000-${String(this.values.length + 1).padStart(12, '0')}`, ...data, isBanned: false, createdAt: new Date() };
+  create(data: { email: string; passwordHash: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage?: string; goals?: string[]; interests?: string[] }) {
+    const user: User = {
+      id: `00000000-0000-4000-8000-${String(this.values.length + 1).padStart(12, '0')}`,
+      ...data,
+      nativeLanguage: data.nativeLanguage ?? null,
+      goals: data.goals ?? [],
+      interests: data.interests ?? [],
+      role: 'USER',
+      suspendedAt: null,
+      isBanned: false,
+      createdAt: new Date(),
+    };
     this.values.push(user);
     return Promise.resolve(user);
   }

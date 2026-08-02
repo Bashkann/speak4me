@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import type { PrismaClient } from '@prisma/client';
 import type { AppConfig } from './config';
 import { AuthController } from './controllers/auth-controller';
+import { AdminController } from './controllers/admin-controller';
 import { MatchmakingController } from './controllers/matchmaking-controller';
 import { MeController } from './controllers/me-controller';
 import { ReportController } from './controllers/report-controller';
@@ -17,6 +18,7 @@ import type { AppLogger } from './lib/logger';
 import { createAuthMiddleware } from './middleware/auth';
 import { openApiDocument } from './openapi';
 import { AuthRepository } from './repositories/auth-repository';
+import { AdminRepository } from './repositories/admin-repository';
 import { MatchmakingRepository } from './repositories/matchmaking-repository';
 import { ReportRepository } from './repositories/report-repository';
 import { RoomRepository } from './repositories/room-repository';
@@ -25,6 +27,7 @@ import { UserRepository } from './repositories/user-repository';
 import { RealtimePublisher } from './realtime/publisher';
 import { createApiRouter } from './routes';
 import { AuthService } from './services/auth-service';
+import { AdminService } from './services/admin-service';
 import { MatchmakingService } from './services/matchmaking-service';
 import { MeService } from './services/me-service';
 import { RoomCoordinator } from './services/room-coordinator';
@@ -34,6 +37,7 @@ import { VoiceService } from './services/voice-service';
 
 export function createApplication(config: AppConfig, db: PrismaClient, logger: AppLogger) {
   const users = new UserRepository(db);
+  const adminRepository = new AdminRepository(db);
   const authRepository = new AuthRepository(db);
   const topics = new TopicRepository(db);
   const reports = new ReportRepository(db);
@@ -47,9 +51,11 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const voiceService = new VoiceService(roomRepository, config, logger);
   const matchmakingService = new MatchmakingService(matchmakingRepository, publisher, config, logger);
   const coordinator = new RoomCoordinator(roomRepository, roomService, voiceService, publisher, config, logger);
+  const adminService = new AdminService(adminRepository, coordinator);
 
   const controllers = {
     auth: new AuthController(authService),
+    admin: new AdminController(adminService),
     me: new MeController(meService),
     topics: new TopicController(topics),
     matchmaking: new MatchmakingController(matchmakingService),

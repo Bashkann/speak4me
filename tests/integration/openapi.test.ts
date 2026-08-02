@@ -7,6 +7,9 @@ describe('OpenAPI document', () => {
     expect(paths['/api/matchmaking/queue']).toBeDefined();
     expect(paths['/api/rooms/{id}/voice-token']).toBeDefined();
     expect(paths['/api/reports']).toBeDefined();
+    expect(paths['/api/me/stats']).toBeDefined();
+    expect(paths['/api/admin/stats']).toBeDefined();
+    expect(paths['/api/admin/topics/{id}']).toBeDefined();
     expect(openApiDocument.components?.securitySchemes?.bearerAuth).toBeDefined();
   });
 });

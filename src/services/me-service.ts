@@ -13,19 +13,31 @@ export class MeService {
       email: user.email,
       displayName: user.displayName,
       englishLevel: user.englishLevel,
+      nativeLanguage: user.nativeLanguage,
+      goals: user.goals,
+      interests: user.interests,
+      role: user.role,
       createdAt: user.createdAt,
     };
   }
 
-  async update(userId: string, data: { displayName?: string; englishLevel?: EnglishLevel }) {
+  async update(userId: string, data: { displayName?: string; englishLevel?: EnglishLevel; nativeLanguage?: string | null; goals?: string[]; interests?: string[] }) {
     const user = await this.users.updateProfile(userId, data);
     return {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
       englishLevel: user.englishLevel,
+      nativeLanguage: user.nativeLanguage,
+      goals: user.goals,
+      interests: user.interests,
+      role: user.role,
       createdAt: user.createdAt,
     };
+  }
+
+  stats(userId: string) {
+    return this.users.stats(userId);
   }
 
   async sessions(userId: string, page: number, limit: number) {

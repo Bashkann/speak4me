@@ -8,18 +8,27 @@ datasource db {
 }
 
 enum EnglishLevel {
+  A1
   A2
   B1
   B2
   C1
+  C2
 }
 
 enum TopicLevel {
+  A1
   A2
   B1
   B2
   C1
+  C2
   ALL
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 enum RoomType {
@@ -48,6 +57,11 @@ model User {
   passwordHash        String
   displayName         String
   englishLevel        EnglishLevel
+  nativeLanguage      String?
+  goals               String[]           @default([])
+  interests           String[]           @default([])
+  role                UserRole            @default(USER)
+  suspendedAt         DateTime?
   isBanned            Boolean            @default(false)
   createdAt           DateTime           @default(now())
   roomParticipants    RoomParticipant[]
@@ -55,6 +69,9 @@ model User {
   reportsMade         Report[]            @relation("ReportsMade")
   reportsReceived     Report[]            @relation("ReportsReceived")
   refreshTokens       RefreshToken[]
+
+  @@index([role])
+  @@index([suspendedAt])
 }
 
 model Topic {
@@ -122,12 +139,14 @@ model Report {
   roomId          String
   reason          String
   createdAt       DateTime  @default(now())
+  resolvedAt      DateTime?
   reporter        User      @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
   reportedUser    User      @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
   room            Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([reportedUserId, createdAt])
   @@index([roomId])
+  @@index([resolvedAt, createdAt])
 }
 
 model RefreshToken {

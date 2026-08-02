@@ -41,6 +41,13 @@ export class RoomCoordinator {
     this.logger.info({ count: rooms.length }, 'Recovered timed rooms');
   }
 
+  async forceAbort(roomId: string, reason: string): Promise<boolean> {
+    const room = await this.repository.findDetailed(roomId);
+    if (!room || ['finished', 'aborted'].includes(room.status)) return false;
+    await this.abort(roomId, reason);
+    return true;
+  }
+
   async connect(roomId: string, userId: string, socketId: string) {
     const participant = await this.repository.findParticipant(roomId, userId);
     if (!participant) throw new AppError(403, 'NOT_A_PARTICIPANT', 'Only room participants can join this channel');
