@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EnglishLevel {
+  A2
+  B1
+  B2
+  C1
+}
+
+enum TopicLevel {
+  A2
+  B1
+  B2
+  C1
+  ALL
+}
+
+enum RoomType {
+  matchmade
+  private
+}
+
+enum RoomStatus {
+  waiting
+  ready
+  round1
+  break
+  round2
+  finished
+  aborted
+}
+
+enum Pair {
+  A
+  B
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  email               String             @unique
+  passwordHash        String
+  displayName         String
+  englishLevel        EnglishLevel
+  isBanned            Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  roomParticipants    RoomParticipant[]
+  queueEntry          MatchQueueEntry?
+  reportsMade         Report[]            @relation("ReportsMade")
+  reportsReceived     Report[]            @relation("ReportsReceived")
+  refreshTokens       RefreshToken[]
+}
+
+model Topic {
+  id              String     @id @default(uuid())
+  textEn          String
+  level           TopicLevel
+  isActive        Boolean    @default(true)
+  roomsAsRound1   Room[]     @relation("Round1Topic")
+  roomsAsRound2   Room[]     @relation("Round2Topic")
+
+  @@index([level, isActive])
+}
+
+model Room {
+  id                String            @id @default(uuid())
+  code              String            @unique @db.Char(6)
+  type              RoomType
+  status            RoomStatus        @default(waiting)
+  roundDurationSec  Int               @default(420)
+  currentRound      Int?
+  roundEndsAt       DateTime?
+  topicRound1Id     String?
+  topicRound2Id     String?
+  createdAt         DateTime           @default(now())
+  finishedAt        DateTime?
+  topicRound1       Topic?             @relation("Round1Topic", fields: [topicRound1Id], references: [id])
+  topicRound2       Topic?             @relation("Round2Topic", fields: [topicRound2Id], references: [id])
+  participants      RoomParticipant[]
+  reports           Report[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RoomParticipant {
+  id          String    @id @default(uuid())
+  roomId      String
+  userId      String
+  seat        Int
+  pair        Pair
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@unique([roomId, seat])
+  @@index([userId, leftAt])
+}
+
+model MatchQueueEntry {
+  id            String       @id @default(uuid())
+  userId        String       @unique
+  englishLevel  EnglishLevel
+  enqueuedAt    DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([enqueuedAt])
+}
+
+model Report {
+  id              String    @id @default(uuid())
+  reporterId      String
+  reportedUserId  String
+  roomId          String
+  reason          String
+  createdAt       DateTime  @default(now())
+  reporter        User      @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser    User      @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  room            Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([reportedUserId, createdAt])
+  @@index([roomId])
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}

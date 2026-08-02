@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: speaking
+      POSTGRES_PASSWORD: speaking
+      POSTGRES_DB: speaking
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speaking -d speaking"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  livekit:
+    image: livekit/livekit-server:v1.8
+    command: ["--dev", "--bind", "0.0.0.0"]
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+
+  api:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://speaking:speaking@postgres:5432/speaking?schema=public
+      JWT_ACCESS_SECRET: docker-development-access-secret-32-chars
+      JWT_REFRESH_SECRET: docker-development-refresh-secret-32chars
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 30
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+      MATCHMAKING_INTERVAL_MS: 3000
+      MATCHMAKING_WIDEN_AFTER_SEC: 120
+      READY_COUNTDOWN_SEC: 5
+      ROUND_BREAK_SEC: 20
+      RECONNECT_GRACE_SEC: 45
+      DEFAULT_ROUND_DURATION_SEC: 420
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
