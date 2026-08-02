@@ -2,11 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Brand } from '../components/Brand';
-import { login, register, type RegisterInput } from '../api/auth';
+import { login } from '../api/auth';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
-import type { EnglishLevel } from '../types/api';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { OnboardingWizard } from '../components/OnboardingWizard';
+import type { AuthResponse } from '../types/api';
 
 type AuthMode = 'login' | 'register';
 
@@ -16,18 +17,16 @@ export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [englishLevel, setEnglishLevel] = useState<EnglishLevel>('B1');
 
   const mutation = useMutation({
-    mutationFn: () => mode === 'login'
-      ? login({ email, password })
-      : register({ email, password, displayName, englishLevel } satisfies RegisterInput),
-    onSuccess: (session) => {
-      setSession(session);
-      navigate('/', { replace: true });
-    },
+    mutationFn: () => login({ email, password }),
+    onSuccess: completeAuth,
   });
+
+  function completeAuth(session: AuthResponse) {
+    setSession(session);
+    navigate('/', { replace: true });
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -88,43 +87,20 @@ export function AuthPage() {
               ))}
             </div>
 
-            <form className="mt-7 space-y-4" onSubmit={submit}>
-              {mode === 'register' && (
+            {mode === 'login' ? (
+              <form className="mt-7 space-y-4" onSubmit={submit}>
                 <div>
-                  <label className="label" htmlFor="displayName">Display name</label>
-                  <input className="field" id="displayName" autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={40} required />
+                  <label className="label" htmlFor="email">Email address</label>
+                  <input className="field" id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
                 </div>
-              )}
-              <div>
-                <label className="label" htmlFor="email">Email address</label>
-                <input className="field" id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
-              </div>
-              <div>
-                <label className="label" htmlFor="password">Password</label>
-                <input className="field" id="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={(event) => setPassword(event.target.value)} minLength={mode === 'register' ? 8 : 1} placeholder={mode === 'register' ? 'At least 8 characters' : 'Your password'} required />
-              </div>
-              {mode === 'register' && (
                 <div>
-                  <label className="label" htmlFor="englishLevel">English level</label>
-                  <select className="field" id="englishLevel" value={englishLevel} onChange={(event) => setEnglishLevel(event.target.value as EnglishLevel)}>
-                    <option value="A2">A2 · Elementary</option>
-                    <option value="B1">B1 · Intermediate</option>
-                    <option value="B2">B2 · Upper intermediate</option>
-                    <option value="C1">C1 · Advanced</option>
-                  </select>
+                  <label className="label" htmlFor="password">Password</label>
+                  <input className="field" id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
                 </div>
-              )}
-
-              {mutation.isError && (
-                <div role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                  {getApiErrorMessage(mutation.error, mode === 'login' ? 'Unable to sign in.' : 'Unable to create your account.')}
-                </div>
-              )}
-
-              <button className="primary-button mt-2 w-full" type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
-              </button>
-            </form>
+                {mutation.isError && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{getApiErrorMessage(mutation.error, 'Unable to sign in.')}</div>}
+                <button className="primary-button mt-2 w-full" type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Please wait…' : 'Log in'}</button>
+              </form>
+            ) : <OnboardingWizard onSuccess={completeAuth} />}
 
             <p className="mt-8 text-center text-xs leading-5 text-slate-400">This is a development test app. Use headphones to prevent audio feedback.</p>
           </div>

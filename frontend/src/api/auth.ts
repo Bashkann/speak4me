@@ -6,6 +6,9 @@ export interface RegisterInput {
   password: string;
   displayName: string;
   englishLevel: EnglishLevel;
+  nativeLanguage?: string;
+  goals?: string[];
+  interests?: string[];
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {

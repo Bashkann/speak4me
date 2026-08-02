@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthPage } from './AuthPage';
@@ -19,7 +19,7 @@ describe('AuthPage', () => {
 
   it('submits the backend-compatible registration shape and stores the session', async () => {
     authMocks.register.mockResolvedValue({
-      user: { id: 'user-1', email: 'learner@example.com', displayName: 'Test Learner', englishLevel: 'B2' },
+      user: { id: 'user-1', email: 'learner@example.com', displayName: 'Test Learner', englishLevel: 'B2', nativeLanguage: 'Turkish', goals: ['travel'], interests: ['technology'], role: 'USER' },
       accessToken: 'access-token', refreshToken: 'refresh-token',
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -39,11 +39,20 @@ describe('AuthPage', () => {
     await user.type(screen.getByLabelText('Display name'), 'Test Learner');
     await user.type(screen.getByLabelText('Email address'), 'learner@example.com');
     await user.type(screen.getByLabelText('Password'), 'Password123!');
-    fireEvent.change(screen.getByLabelText('English level'), { target: { value: 'B2' } });
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(await screen.findByRole('button', { name: /Travel/ }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(await screen.findByRole('button', { name: /B2 Upper intermediate/ }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(await screen.findByRole('button', { name: 'Turkish' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(await screen.findByRole('button', { name: 'technology' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(await screen.findByRole('button', { name: 'Create my account' }));
 
     await waitFor(() => expect(authMocks.register).toHaveBeenCalledWith({
       email: 'learner@example.com', password: 'Password123!', displayName: 'Test Learner', englishLevel: 'B2',
+      nativeLanguage: 'Turkish', goals: ['travel'], interests: ['technology'],
     }));
     expect(await screen.findByText('Signed in')).toBeInTheDocument();
     expect(useAuthStore.getState().user?.englishLevel).toBe('B2');
