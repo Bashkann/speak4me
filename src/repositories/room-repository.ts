@@ -39,7 +39,7 @@ export class RoomRepository {
       if (!room) return 'not_found';
       const ownMembership = room.participants.find((participant) => participant.userId === userId);
       if (active && !ownMembership) return 'active_room';
-      if (ownMembership) return room;
+      if (ownMembership) return ['finished', 'aborted'].includes(room.status) ? 'unavailable' : room;
       if (room.type !== 'private' || room.status !== 'waiting') return 'unavailable';
       const occupied = new Set(room.participants.filter((item) => !item.leftAt).map((item) => item.seat));
       const seat = [1, 2, 3, 4].find((candidate) => !occupied.has(candidate));
@@ -127,6 +127,10 @@ export class RoomRepository {
 
   setAllParticipantsPresent(roomId: string) {
     return this.db.roomParticipant.updateMany({ where: { roomId }, data: { leftAt: null } });
+  }
+
+  markAllParticipantsDisconnected(roomId: string, leftAt: Date) {
+    return this.db.roomParticipant.updateMany({ where: { roomId }, data: { leftAt } });
   }
 
   async abort(roomId: string) {

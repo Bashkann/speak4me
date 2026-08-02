@@ -30,6 +30,12 @@ export class RoomCoordinator {
         await this.repository.updateState(room.id, 'ready', { status: 'waiting', roundEndsAt: null });
         continue;
       }
+      const disconnectedAt = new Date();
+      await this.repository.markAllParticipantsDisconnected(room.id, disconnectedAt);
+      room.participants.forEach((participant) => {
+        participant.leftAt = disconnectedAt;
+        this.scheduleGrace(room.id, participant.userId);
+      });
       this.scheduleStateTimer(room);
     }
     this.logger.info({ count: rooms.length }, 'Recovered timed rooms');
@@ -271,6 +277,11 @@ export class RoomCoordinator {
   private clearRoom(roomId: string): void {
     this.clearStateTimers(roomId);
     this.presence.delete(roomId);
+    for (const key of this.graceTimers.keys()) {
+      if (!key.startsWith(`${roomId}:`)) continue;
+      clearTimeout(this.graceTimers.get(key));
+      this.graceTimers.delete(key);
+    }
   }
 
   private graceKey(roomId: string, userId: string): string {

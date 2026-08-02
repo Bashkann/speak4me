@@ -45,13 +45,19 @@ export function configureSockets(
   rooms.on('connection', (socket: AuthenticatedSocket) => {
     const joined = new Set<string>();
     socket.on('join', async (payload: unknown) => {
+      let attemptedRoomId: string | undefined;
       try {
         const { roomId } = joinSchema.parse(payload);
+        attemptedRoomId = roomId;
         await socket.join(roomId);
-        joined.add(roomId);
         const state = await coordinator.connect(roomId, socket.data.userId, socket.id);
+        joined.add(roomId);
         socket.emit('room_state', state);
       } catch (error) {
+        if (attemptedRoomId) {
+          joined.delete(attemptedRoomId);
+          await socket.leave(attemptedRoomId);
+        }
         emitSocketError(socket, error);
       }
     });

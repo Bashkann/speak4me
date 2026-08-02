@@ -39,8 +39,11 @@ const topics: Array<{ textEn: string; level: TopicLevel }> = [
 const demoLevels: EnglishLevel[] = ['A2', 'A2', 'B1', 'B1', 'B2', 'B2', 'C1', 'C1'];
 
 async function main(): Promise<void> {
-  await prisma.topic.deleteMany();
-  await prisma.topic.createMany({ data: topics });
+  const existingTopics = new Set(
+    (await prisma.topic.findMany({ select: { textEn: true } })).map((topic) => topic.textEn),
+  );
+  const missingTopics = topics.filter((topic) => !existingTopics.has(topic.textEn));
+  if (missingTopics.length) await prisma.topic.createMany({ data: missingTopics });
 
   const passwordHash = await bcrypt.hash('DemoPass123!', 12);
   for (let index = 0; index < demoLevels.length; index += 1) {
