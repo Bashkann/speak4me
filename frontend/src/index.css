@@ -13,6 +13,10 @@
     text-rendering: optimizeLegibility;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -21,6 +25,19 @@
     min-width: 320px;
     min-height: 100vh;
     margin: 0;
+    background-image:
+      radial-gradient(circle at 12% 0%, rgba(123, 217, 173, 0.18), transparent 30rem),
+      radial-gradient(circle at 95% 20%, rgba(251, 191, 36, 0.10), transparent 28rem);
+    background-attachment: fixed;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .dark body {
+    background-color: #09130f;
+    background-image:
+      radial-gradient(circle at 12% 0%, rgba(34, 163, 111, 0.14), transparent 30rem),
+      radial-gradient(circle at 95% 20%, rgba(251, 191, 36, 0.05), transparent 28rem);
+    color: #e7f0eb;
   }
 
   button,
@@ -53,5 +70,39 @@
 
   .secondary-button {
     @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .dark .bg-canvas { background-color: #09130f; }
+  .dark .bg-white { background-color: #10201a; }
+  .dark .bg-white\/90 { background-color: rgba(16, 32, 26, 0.90); }
+  .dark .bg-white\/60 { background-color: rgba(16, 32, 26, 0.60); }
+  .dark .bg-slate-50 { background-color: #13271f; }
+  .dark .bg-slate-100 { background-color: #193126; }
+  .dark .bg-\[\#eff3ef\] { background-color: #09130f; }
+  .dark .text-ink { color: #eff8f3; }
+  .dark .text-slate-700 { color: #d4e2da; }
+  .dark .text-slate-600 { color: #b9cbc0; }
+  .dark .text-slate-500 { color: #9bb0a4; }
+  .dark .text-slate-400 { color: #82988c; }
+  .dark .border-slate-100 { border-color: #1b3529; }
+  .dark .border-slate-200 { border-color: #284438; }
+  .dark .border-slate-300 { border-color: #39594b; }
+  .dark .ring-slate-200 { --tw-ring-color: #284438; }
+  .dark .field { border-color: #315043; background-color: #10201a; color: #eff8f3; }
+  .dark .secondary-button { border-color: #315043; background-color: #10201a; color: #dce9e2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

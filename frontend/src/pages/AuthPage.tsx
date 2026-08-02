@@ -6,6 +6,7 @@ import { login, register, type RegisterInput } from '../api/auth';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
 import type { EnglishLevel } from '../types/api';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 type AuthMode = 'login' | 'register';
 
@@ -40,6 +41,7 @@ export function AuthPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-canvas px-4 py-5 sm:px-6 lg:px-8">
+      <div className="absolute right-6 top-6 z-20"><ThemeToggle compact /></div>
       <div className="pointer-events-none absolute -left-24 top-24 h-72 w-72 rounded-full bg-brand-200/60 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-amber-100/80 blur-3xl" />
 

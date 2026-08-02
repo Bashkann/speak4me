@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { logout } from '../api/auth';
 import { useAuthStore } from '../store/auth-store';
 import { Brand } from './Brand';
+import { ThemeToggle } from './ThemeToggle';
 
 export function AppShell() {
   const user = useAuthStore((state) => state.user);
@@ -16,7 +17,7 @@ export function AppShell() {
   });
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas pb-24 sm:pb-0">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-canvas/90 backdrop-blur-xl">
         <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
           <Brand />
@@ -25,6 +26,7 @@ export function AppShell() {
             <NavItem to="/history" label="History" />
           </nav>
           <div className="flex items-center gap-3">
+            <ThemeToggle compact />
             <div className="hidden text-right md:block">
               <p className="text-sm font-bold text-ink">{user?.displayName}</p>
               <p className="text-xs font-medium text-slate-400">Level {user?.englishLevel}</p>
@@ -38,14 +40,18 @@ export function AppShell() {
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl border-t border-slate-200/70 px-5 sm:hidden" aria-label="Mobile navigation">
-          <NavItem to="/" label="Home" />
-          <NavItem to="/history" label="History" />
-        </nav>
       </header>
       <Outlet />
+      <nav className="safe-bottom fixed inset-x-3 bottom-2 z-40 grid grid-cols-2 rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden" aria-label="Mobile navigation">
+        <MobileNavItem to="/" label="Home" icon="⌂" />
+        <MobileNavItem to="/history" label="History" icon="◷" />
+      </nav>
     </div>
   );
+}
+
+function MobileNavItem({ to, label, icon }: { to: string; label: string; icon: string }) {
+  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex min-h-12 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition ${isActive ? 'bg-brand-50 text-brand-800' : 'text-slate-500'}`}><span className="text-lg leading-none" aria-hidden="true">{icon}</span><span className="mt-1">{label}</span></NavLink>;
 }
 
 function NavItem({ to, label }: { to: string; label: string }) {

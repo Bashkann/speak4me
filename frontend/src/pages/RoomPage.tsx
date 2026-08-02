@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Socket } from 'socket.io-client';
@@ -129,13 +130,13 @@ export function RoomPage() {
   const myRole = session.speakingPair && me ? (me.pair === session.speakingPair ? 'speaker' : 'listener') : null;
 
   return (
-    <main className="min-h-screen bg-[#eff3ef]">
+    <main className="min-h-screen bg-[#eff3ef] pb-28 md:pb-0">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
           <Brand />
           <div className="flex items-center gap-3">
             <ConnectionPill state={session.socketState} />
-            <button type="button" onClick={() => void leave()} disabled={isLeaving} className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60">{isLeaving ? 'Leaving…' : 'Leave'}</button>
+            <button type="button" onClick={() => void leave()} disabled={isLeaving} className="hidden rounded-xl border border-red-100 bg-red-50 px-3.5 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 md:inline-flex">{isLeaving ? 'Leaving…' : 'Leave'}</button>
           </div>
         </div>
       </header>
@@ -156,7 +157,7 @@ export function RoomPage() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
             <section>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                 {[1, 2, 3, 4].map((seat) => (
                   <SeatCard key={seat} seat={seat} participant={room.participants.find((item) => item.seat === seat)} speakingPair={session.speakingPair} currentUserId={user?.id} audioLevel={audio.audioLevels[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? 0} microphoneOn={audio.microphoneEnabled[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? false} />
                 ))}
@@ -164,7 +165,8 @@ export function RoomPage() {
             </section>
 
             <aside className="space-y-5">
-              <section className={`overflow-hidden rounded-3xl p-6 ${myRole === 'speaker' ? 'bg-brand-700 text-white' : myRole === 'listener' ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-ink'}`}>
+              <AnimatePresence mode="wait" initial={false}>
+              <motion.section key={`${room.status}-${myRole ?? 'waiting'}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }} className={`overflow-hidden rounded-3xl p-6 ${myRole === 'speaker' ? 'bg-brand-700 text-white shadow-glow' : myRole === 'listener' ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-ink'}`}>
                 {myRole ? (
                   <>
                     <p className={`text-xs font-bold uppercase tracking-[0.18em] ${myRole === 'speaker' ? 'text-brand-200' : 'text-slate-400'}`}>Your role</p>
@@ -174,18 +176,22 @@ export function RoomPage() {
                 ) : (
                   <><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Room status</p><h2 className="mt-3 font-display text-2xl font-extrabold">{room.status === 'break' ? 'Roles are switching' : room.status === 'ready' ? 'Get ready' : 'Waiting for all four'}</h2><p className="mt-3 text-sm leading-6 text-slate-500">{room.status === 'break' ? 'Pair B will speak in the next round.' : 'Keep this tab open while everyone connects.'}</p></>
                 )}
-              </section>
+              </motion.section>
+              </AnimatePresence>
 
               <section className="rounded-3xl border border-slate-200 bg-white p-6">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Conversation topic</p>
                 {session.topic ? <h2 className="mt-4 font-display text-xl font-extrabold leading-7 text-ink">“{session.topic}”</h2> : <p className="mt-4 text-sm leading-6 text-slate-500">The topic appears when the speaking round begins.</p>}
               </section>
 
-              <AudioControls role={myRole} audio={audio} />
+              <div className="hidden md:block"><AudioControls role={myRole} audio={audio} /></div>
             </aside>
           </div>
         )}
       </div>
+      {!['finished', 'aborted'].includes(room.status) && (
+        <MobileRoomControls role={myRole} audio={audio} isLeaving={isLeaving} onLeave={leave} />
+      )}
     </main>
   );
 }
@@ -194,21 +200,32 @@ function SeatCard({ seat, participant, speakingPair, currentUserId, audioLevel, 
   if (!participant) return <div className="grid min-h-52 place-items-center rounded-3xl border-2 border-dashed border-slate-300 bg-white/50 p-6 text-center"><div><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-400">{seat}</span><p className="mt-3 text-sm font-semibold text-slate-400">Waiting for someone…</p></div></div>;
   const isSpeaker = speakingPair === participant.pair;
   const isMe = participant.userId === currentUserId;
+  const isActivelySpeaking = audioLevel > 0.05;
   return (
-    <article className={`relative min-h-52 overflow-hidden rounded-3xl border bg-white p-6 transition ${isMe ? 'border-brand-400 ring-4 ring-brand-100' : isSpeaker ? 'border-brand-200' : 'border-slate-200'}`}>
+    <motion.article initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.22, delay: seat * 0.035 }} className={`relative min-h-44 overflow-hidden rounded-2xl border bg-white p-3 transition sm:min-h-52 sm:rounded-3xl sm:p-6 ${isMe ? 'border-brand-400 ring-2 ring-brand-100 sm:ring-4' : isSpeaker ? 'border-brand-200' : 'border-slate-200'} ${isActivelySpeaking ? 'shadow-glow ring-2 ring-brand-300' : ''}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="relative"><span className={`grid h-16 w-16 place-items-center rounded-2xl font-display text-lg font-extrabold ${isSpeaker ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{initials(participant.displayName)}</span><span className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${participant.connected ? 'bg-emerald-500' : 'bg-slate-300'}`} aria-label={participant.connected ? 'Connected' : 'Disconnected'} /></div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isSpeaker ? 'bg-brand-100 text-brand-800' : speakingPair ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700'}`}>{speakingPair ? (isSpeaker ? 'Speaking' : 'Listening') : `Pair ${participant.pair}`}</span>
+        <div className="relative"><span className={`grid h-11 w-11 place-items-center rounded-xl font-display text-sm font-extrabold sm:h-16 sm:w-16 sm:rounded-2xl sm:text-lg ${isSpeaker ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{initials(participant.displayName)}</span><span className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${participant.connected ? 'bg-emerald-500' : 'bg-slate-300'}`} aria-label={participant.connected ? 'Connected' : 'Disconnected'} /></div>
+        <span className={`rounded-full px-2 py-1 text-[10px] font-bold sm:px-2.5 sm:text-xs ${isSpeaker ? 'bg-brand-100 text-brand-800' : speakingPair ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700'}`}>{speakingPair ? (isSpeaker ? 'Speaking' : 'Listening') : `Pair ${participant.pair}`}</span>
       </div>
-      <h2 className="mt-5 font-display text-xl font-extrabold text-ink">{participant.displayName}{isMe && <span className="ml-2 text-xs font-bold text-brand-700">You</span>}</h2>
-      <p className="mt-1 text-sm font-medium text-slate-400">Level {participant.englishLevel} · Seat {participant.seat}</p>
-      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"><span className="text-xs font-semibold text-slate-400">{audioLevel > 0.05 ? 'Speaking now' : participant.connected ? 'In the room' : 'Reconnecting…'}</span><div className="flex items-center gap-2"><AudioMeter level={audioLevel} /><span className={`grid h-8 w-8 place-items-center rounded-full ${microphoneOn ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-400'}`}><MicIcon muted={!microphoneOn} /></span></div></div>
-    </article>
+      <h2 className="mt-4 truncate font-display text-sm font-extrabold text-ink sm:mt-5 sm:text-xl">{participant.displayName}{isMe && <span className="ml-1 text-[10px] font-bold text-brand-700 sm:ml-2 sm:text-xs">You</span>}</h2>
+      <p className="mt-1 text-[11px] font-medium text-slate-400 sm:text-sm">Level {participant.englishLevel} · Seat {participant.seat}</p>
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 sm:mt-5 sm:pt-4"><span className="hidden text-xs font-semibold text-slate-400 sm:inline">{audioLevel > 0.05 ? 'Speaking now' : participant.connected ? 'In the room' : 'Reconnecting…'}</span><div className="ml-auto flex items-center gap-2"><AudioMeter level={audioLevel} /><span className={`grid h-8 w-8 place-items-center rounded-full ${microphoneOn ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-400'}`}><MicIcon muted={!microphoneOn} /></span></div></div>
+    </motion.article>
   );
 }
 
 function Timer({ remainingSec, label }: { remainingSec: number; label: string }) {
-  return <div className="flex items-center gap-3"><div className="text-right"><p className="text-xs font-semibold text-slate-400">{label}</p><p className="font-display text-xl font-extrabold tabular-nums text-ink">{formatTime(remainingSec)}</p></div><span className={`h-2.5 w-2.5 rounded-full ${remainingSec <= 10 ? 'animate-pulse bg-amber-500' : 'bg-brand-500'}`} /></div>;
+  return <div className="flex items-center gap-3"><div className="text-right"><p className="text-xs font-semibold text-slate-400">{label}</p><motion.p key={remainingSec} initial={{ opacity: 0.55, y: -2 }} animate={{ opacity: 1, y: 0 }} className="font-display text-xl font-extrabold tabular-nums text-ink">{formatTime(remainingSec)}</motion.p></div><span className={`h-2.5 w-2.5 rounded-full ${remainingSec <= 10 ? 'animate-pulse bg-amber-500' : 'bg-brand-500'}`} /></div>;
+}
+
+function MobileRoomControls({ role, audio, isLeaving, onLeave }: { role: 'speaker' | 'listener' | null; audio: ReturnType<typeof useLiveKitAudio>; isLeaving: boolean; onLeave: () => Promise<void> }) {
+  const connected = audio.connectionState === 'connected';
+  return (
+    <div className="safe-bottom fixed inset-x-3 bottom-2 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 p-2.5 shadow-soft backdrop-blur-xl md:hidden">
+      <button type="button" onClick={() => void onLeave()} disabled={isLeaving} className="min-h-14 flex-1 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-red-700 disabled:opacity-50">{isLeaving ? 'Leaving…' : 'Leave room'}</button>
+      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => void audio.toggleMicrophone()} disabled={role !== 'speaker' || !connected || audio.microphoneState === 'starting'} className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl ${role === 'speaker' && audio.microphoneState === 'on' ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-400'}`} aria-label={audio.microphoneState === 'on' ? 'Mute microphone' : 'Unmute microphone'}><MicIcon muted={audio.microphoneState !== 'on'} /></motion.button>
+    </div>
+  );
 }
 
 function ConnectionPill({ state }: { state: 'connecting' | 'connected' | 'reconnecting' }) {
