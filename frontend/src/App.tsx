@@ -10,6 +10,8 @@ import { WaitingPage } from './pages/WaitingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ToastViewport } from './components/ToastViewport';
 import { PageTransition } from './components/PageTransition';
+import { RequireAdmin } from './components/RequireAdmin';
+import { AdminPage } from './pages/AdminPage';
 
 const RoomPage = lazy(() => import('./pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 
@@ -27,6 +29,9 @@ export function App() {
             <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
             <Route path="/history" element={<PageTransition><HistoryPage /></PageTransition>} />
             <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
+            <Route element={<RequireAdmin />}>
+              <Route path="/admin" element={<PageTransition><AdminPage /></PageTransition>} />
+            </Route>
             <Route path="/waiting" element={<PageTransition><WaitingPage /></PageTransition>} />
           </Route>
         </Route>

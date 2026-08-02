@@ -25,6 +25,7 @@ export function AppShell() {
             <NavItem to="/" label="Home" />
             <NavItem to="/history" label="History" />
             <NavItem to="/profile" label="Profile" />
+            {user?.role === 'ADMIN' && <NavItem to="/admin" label="Admin" />}
           </nav>
           <div className="flex items-center gap-3">
             <ThemeToggle compact />
@@ -43,10 +44,11 @@ export function AppShell() {
         </div>
       </header>
       <Outlet />
-      <nav className="safe-bottom fixed inset-x-3 bottom-2 z-40 grid grid-cols-3 rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden" aria-label="Mobile navigation">
+      <nav className={`safe-bottom fixed inset-x-3 bottom-2 z-40 grid ${user?.role === 'ADMIN' ? 'grid-cols-4' : 'grid-cols-3'} rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden`} aria-label="Mobile navigation">
         <MobileNavItem to="/" label="Home" icon="⌂" />
         <MobileNavItem to="/history" label="History" icon="◷" />
         <MobileNavItem to="/profile" label="Profile" icon="◎" />
+        {user?.role === 'ADMIN' && <MobileNavItem to="/admin" label="Admin" icon="◇" />}
       </nav>
     </div>
   );
