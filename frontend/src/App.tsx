@@ -4,7 +4,7 @@ import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { HomePage } from './pages/HomePage';
-import { RoomPlaceholderPage } from './pages/RoomPlaceholderPage';
+import { RoomPage } from './pages/RoomPage';
 import { WaitingPage } from './pages/WaitingPage';
 
 export function App() {
@@ -14,11 +14,11 @@ export function App() {
         <Route path="/auth" element={<AuthPage />} />
       </Route>
       <Route element={<RequireAuth />}>
+        <Route path="/rooms/:roomId" element={<RoomPage />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/waiting" element={<WaitingPage />} />
-          <Route path="/rooms/:roomId" element={<RoomPlaceholderPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
