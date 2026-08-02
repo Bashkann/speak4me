@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ensureQueued, getMatchmakingStatus, leaveQueue } from '../api/matchmaking';
@@ -16,6 +17,7 @@ export function WaitingPage() {
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const [socketError, setSocketError] = useState<string | null>(null);
   const reconnectToastShown = useRef(false);
+  const searchWidened = elapsedSec >= 120;
 
   const queueQuery = useQuery({
     queryKey: ['ensure-queued', user?.id],
@@ -98,16 +100,21 @@ export function WaitingPage() {
           </div>
         ) : (
           <>
-            <div className="relative mx-auto h-44 w-44" aria-hidden="true">
-              <span className="absolute inset-0 animate-ping rounded-full border border-brand-300/50 [animation-duration:2.6s]" />
-              <span className="absolute inset-5 animate-ping rounded-full border border-brand-400/50 [animation-delay:500ms] [animation-duration:2.6s]" />
-              <span className="absolute inset-10 grid place-items-center rounded-full bg-ink shadow-xl">
+            <div className="relative mx-auto h-48 w-48" aria-hidden="true">
+              <motion.span className="absolute inset-5 rounded-full border border-brand-300/60" animate={{ scale: [0.92, 1.08, 0.92], opacity: [0.35, 0.8, 0.35] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
+              <motion.div className="absolute inset-0" animate={{ rotate: 360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>
+                {['A', 'B', 'C', 'D'].map((label, index) => {
+                  const positions = ['left-1/2 top-0 -translate-x-1/2', 'right-0 top-1/2 -translate-y-1/2', 'bottom-0 left-1/2 -translate-x-1/2', 'left-0 top-1/2 -translate-y-1/2'];
+                  return <motion.span key={label} className={`absolute grid h-10 w-10 place-items-center rounded-full border-2 border-white bg-brand-100 font-display text-xs font-extrabold text-brand-800 shadow-md ${positions[index]}`} animate={{ rotate: -360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>{label}</motion.span>;
+                })}
+              </motion.div>
+              <motion.span className="absolute inset-12 grid place-items-center rounded-full bg-ink shadow-xl" animate={{ scale: [1, 1.045, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}>
                 <svg className="h-10 w-10 text-brand-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 9v6M12 6v12M16 9v6M5 12h14" strokeLinecap="round" /></svg>
-              </span>
+              </motion.span>
             </div>
-            <p className="mt-7 text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Searching nearby levels</p>
+            <motion.p key={searchWidened ? 'wide' : 'nearby'} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={`mt-7 text-xs font-bold uppercase tracking-[0.2em] ${searchWidened ? 'text-amber-700' : 'text-brand-700'}`}>{searchWidened ? 'Widening search…' : 'Searching nearby levels'}</motion.p>
             <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight">Finding your room…</h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">We’re looking for three learners around level <strong className="text-ink">{user?.englishLevel}</strong>. Keep this page open.</p>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">{searchWidened ? 'We expanded the level range to find your room sooner.' : <>We’re looking for three learners around level <strong className="text-ink">{user?.englishLevel}</strong>.</>} Keep this page open.</p>
 
             <div className="mt-7 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-slate-50 px-4 py-4"><p className="text-xs font-semibold text-slate-400">Elapsed</p><p className="mt-1 font-display text-xl font-extrabold tabular-nums">{formatElapsed(elapsedSec)}</p></div>
@@ -115,7 +122,7 @@ export function WaitingPage() {
             </div>
             {socketError && <p role="status" className="mt-3 text-xs font-medium text-amber-700">Realtime connection interrupted. Retrying automatically.</p>}
             <button type="button" className="secondary-button mt-7 w-full" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}>{cancelMutation.isPending ? 'Cancelling…' : 'Cancel search'}</button>
-            <p className="mt-4 text-xs text-slate-400">After 2 minutes, the level range widens automatically.</p>
+            <p className="mt-4 text-xs text-slate-400">{searchWidened ? 'The wider level range is now active.' : 'After 2 minutes, the level range widens automatically.'}</p>
           </>
         )}
       </section>

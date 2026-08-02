@@ -23,7 +23,15 @@ The stack automatically applies Prisma migrations and seeds 30 topics plus eight
 
 Health checks are available at both `/healthz` and `/api/healthz`. The Docker development LiveKit credentials are `devkey` / `secret`; change them outside local development.
 
-Demo accounts are `demo1@example.com` through `demo8@example.com`, all with password `DemoPass123!`.
+Demo accounts are `demo1@example.com` through `demo8@example.com`, all with password `DemoPass123!`. The seeded administrator is `admin@example.com` with the same password. These credentials are only for local development.
+
+## Web experience
+
+New accounts use a six-step onboarding flow that collects account details, goals, CEFR level (A1–C2), native language, and conversation interests. Signed-in users can edit those fields and view practice statistics at `/profile`.
+
+Administrators see an additional `/admin` navigation item. The panel includes community statistics, searchable user/role/suspension controls, active-room force close, report resolution, and topic management. Every `/api/admin/*` endpoint also enforces the admin role server-side; hiding the navigation is not the security boundary.
+
+The frontend includes light, dark, and system themes, responsive desktop navigation, and a mobile bottom tab bar. At 375px the room keeps its four seats in a 2×2 grid and fixes large microphone/leave controls above the safe area.
 
 ## Local development
 
@@ -43,7 +51,7 @@ npm run build
 npm test
 ```
 
-The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycle, a fake-timer queue-to-finished session, and LiveKit JWT/permission-flip checks.
+The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycle, admin authorization, a fake-timer queue-to-finished session, and LiveKit JWT/permission-flip checks.
 
 ## Environment
 
@@ -79,6 +87,10 @@ All environment input is validated at startup. Refresh tokens are stored only as
 7. After round two, `session_finished` is emitted, the room is persisted as history, and the LiveKit room is closed. `GET /api/me/sessions` returns paginated finished sessions.
 
 Private rooms use `POST /api/rooms`, share the returned six-character `code`, and join through `POST /api/rooms/join`.
+
+Profile updates use `PATCH /api/me`; `GET /api/me/stats` returns completed sessions, total practice minutes, and the latest session date. Additive registration fields (`nativeLanguage`, `goals`, and `interests`) remain optional for older clients.
+
+Administrative operations are grouped under `/api/admin`: stats, users, active rooms, reports, and topics. Suspended users cannot log in, refresh an existing session, authenticate an API request, connect a socket, or enter matchmaking.
 
 ## Realtime and recovery behavior
 

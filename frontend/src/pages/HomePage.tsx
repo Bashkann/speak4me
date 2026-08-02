@@ -1,17 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPrivateRoom, joinPrivateRoom } from '../api/rooms';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
+import { useToastStore } from '../store/toast-store';
 
 export function HomePage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const addToast = useToastStore((state) => state.add);
   const [code, setCode] = useState('');
   const [roundDurationSec, setRoundDurationSec] = useState(420);
   const [createdRoom, setCreatedRoom] = useState<{ id: string; code: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [joinTouched, setJoinTouched] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: () => createPrivateRoom(roundDurationSec),
@@ -24,14 +28,34 @@ export function HomePage() {
 
   const submitJoin = (event: FormEvent) => {
     event.preventDefault();
+    setJoinTouched(true);
     if (code.trim().length === 6) joinMutation.mutate();
   };
 
   const copyCode = async () => {
+    if (!createdRoom) return false;
+    try {
+      await navigator.clipboard.writeText(createdRoom.code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+      return true;
+    } catch {
+      addToast('error', 'Could not copy the room code. Select it and copy manually.');
+      return false;
+    }
+  };
+
+  const shareRoom = async () => {
     if (!createdRoom) return;
-    await navigator.clipboard.writeText(createdRoom.code);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Join my Speak Four room', text: `Join my English speaking room with code ${createdRoom.code}.`, url: window.location.origin });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+    if (await copyCode()) addToast('success', 'Room code copied — share it with your group.');
   };
 
   return (
@@ -73,17 +97,18 @@ export function HomePage() {
             <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Private room</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold text-ink">Practice with invited people</h2>
 
+            <AnimatePresence mode="wait" initial={false}>
             {createdRoom ? (
-              <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+              <motion.div key="created" initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-brand-700">Share this room code</p>
                 <button type="button" onClick={() => void copyCode()} className="mt-2 flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-left ring-1 ring-brand-200">
                   <span className="font-display text-2xl font-extrabold tracking-[0.18em] text-ink">{createdRoom.code}</span>
                   <span className="text-xs font-bold text-brand-700">{copied ? 'Copied!' : 'Copy'}</span>
                 </button>
-                <button type="button" onClick={() => navigate(`/rooms/${createdRoom.id}`)} className="primary-button mt-4 w-full">Enter room</button>
-              </div>
+                <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={() => void shareRoom()} className="secondary-button">Share</button><button type="button" onClick={() => navigate(`/rooms/${createdRoom.id}`)} className="primary-button">Enter lobby</button></div>
+              </motion.div>
             ) : (
-              <>
+              <motion.div key="create" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="mt-6 flex gap-2">
                   <select className="field !w-auto flex-1" aria-label="Round duration" value={roundDurationSec} onChange={(event) => setRoundDurationSec(Number(event.target.value))}>
                     <option value={300}>5 minute rounds</option>
@@ -95,14 +120,16 @@ export function HomePage() {
                   </button>
                 </div>
                 {createMutation.isError && <p role="alert" className="mt-2 text-xs font-semibold text-red-600">{getApiErrorMessage(createMutation.error, 'Could not create a private room.')}</p>}
-              </>
+              </motion.div>
             )}
+            </AnimatePresence>
 
             <div className="my-5 flex items-center gap-3 text-xs font-semibold text-slate-300"><span className="h-px flex-1 bg-slate-200" />or join a room<span className="h-px flex-1 bg-slate-200" /></div>
             <form onSubmit={submitJoin} className="flex gap-2">
-              <input className="field uppercase tracking-[0.16em]" aria-label="Private room code" value={code} onChange={(event) => setCode(event.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6))} placeholder="ABC123" minLength={6} maxLength={6} required />
+              <input className="field uppercase tracking-[0.16em]" aria-label="Private room code" aria-describedby="room-code-help" value={code} onBlur={() => setJoinTouched(true)} onChange={(event) => { setCode(event.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6)); joinMutation.reset(); }} placeholder="ABC123" minLength={6} maxLength={6} pattern="[A-Za-z0-9]{6}" required />
               <button type="submit" className="secondary-button" disabled={joinMutation.isPending || code.length !== 6}>{joinMutation.isPending ? 'Joining…' : 'Join'}</button>
             </form>
+            <p id="room-code-help" className={`mt-2 text-xs font-medium ${joinTouched && code.length > 0 && code.length !== 6 ? 'text-amber-700' : 'text-slate-400'}`}>{joinTouched && code.length > 0 && code.length !== 6 ? `Enter ${6 - code.length} more character${6 - code.length === 1 ? '' : 's'}.` : 'Room codes contain exactly six letters or numbers.'}</p>
             {joinMutation.isError && <p role="alert" className="mt-2 text-xs font-semibold text-red-600">{getApiErrorMessage(joinMutation.error, 'Could not join that room.')}</p>}
           </article>
         </section>
