@@ -47,12 +47,12 @@ async function main(): Promise<void> {
     const number = index + 1;
     await prisma.user.upsert({
       where: { email: `demo${number}@example.com` },
-      update: { displayName: `Demo User ${number}`, englishLevel: demoLevels[index] },
+      update: { displayName: `Demo User ${number}`, englishLevel: demoLevels[index]! },
       create: {
         email: `demo${number}@example.com`,
         passwordHash,
         displayName: `Demo User ${number}`,
-        englishLevel: demoLevels[index],
+        englishLevel: demoLevels[index]!,
       },
     });
   }
