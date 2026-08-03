@@ -130,6 +130,6 @@ registry.registerPath({ method: 'get', path: '/healthz', tags: ['System'], respo
 
 export const openApiDocument = new OpenApiGeneratorV3(registry.definitions).generateDocument({
   openapi: '3.0.3',
-  info: { title: 'English Speaking Rooms API', version: '1.0.0', description: 'REST and Socket.IO backend for four-person speaking sessions.' },
+  info: { title: 'English Speaking Rooms API', version: '2.0.0', description: 'REST and Socket.IO backend that splits four matched learners into independent two-person speaking sessions.' },
   servers: [{ url: '/' }],
 });

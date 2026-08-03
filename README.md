@@ -1,6 +1,6 @@
 # English Speaking Rooms API
 
-Backend v1 for four-person English speaking practice sessions. It provides a REST API, JWT-authenticated Socket.IO channels, PostgreSQL matchmaking and recoverable timers, plus LiveKit audio permissions (self-hosted locally, LiveKit Cloud in production).
+Backend v2 for English speaking practice. Matchmaking gathers four compatible learners and atomically splits them into two independent two-person rooms. Each room has one server-authoritative Speaker, one Listener, two timed rounds, topic swaps, recoverable timers, and LiveKit audio permissions.
 
 The repository also includes a React test frontend in [`frontend/`](frontend/README.md) that exercises the complete multi-user and LiveKit flow.
 
@@ -33,7 +33,7 @@ New accounts use a six-step onboarding flow that collects account details, goals
 
 Administrators see an additional `/admin` navigation item. The panel includes community statistics, searchable user/role/suspension controls, active-room force close, report resolution, and topic management. Every `/api/admin/*` endpoint also enforces the admin role server-side; hiding the navigation is not the security boundary.
 
-The frontend includes light, dark, and system themes, responsive desktop navigation, and a mobile bottom tab bar. At 375px the room keeps its four seats in a 2×2 grid and fixes large microphone/leave controls above the safe area.
+The frontend includes light, dark, and system themes, responsive desktop navigation, and a mobile bottom tab bar. At 375px the two participant cards stack cleanly while large microphone/leave controls remain above the safe area.
 
 The interface also includes reduced-motion-aware micro-interactions, floating-label authentication, animated onboarding feedback, loading skeletons, friendly empty states, sliding navigation indicators, and audio-responsive room feedback. The admin route is lazy-loaded to keep it out of the normal learner path.
 
@@ -77,19 +77,20 @@ The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycl
 | `ROUND_BREAK_SEC` | `20` | Break between rounds |
 | `RECONNECT_GRACE_SEC` | `45` | Active-session reconnect grace |
 | `DEFAULT_ROUND_DURATION_SEC` | `420` | Default round length; room requests accept 300–600 |
+| `TOPIC_OFFER_CAP` | `3` | Total topics offered per speaker, including the initial suggestion |
 | `LOG_LEVEL` | `info` | Pino log level |
 
 All environment input is validated at startup. Refresh tokens are stored only as SHA-256 hashes and rotate on use.
 
 ## One full session
 
-1. Register or log in four users with `POST /api/auth/register` or `/api/auth/login`. Registration returns the public user and both tokens; login returns the same shape.
-2. Connect each access token to Socket.IO namespace `/me` using `auth: { token }`.
-3. Each user calls `POST /api/matchmaking/queue`. Every three seconds, the oldest compatible users are grouped. `/me` emits `matched { roomId }` to each user.
-4. Connect all users to namespace `/rooms` with the same auth shape, then emit `join { roomId }`. Each receives `room_state`. Once all four are present, the server emits `room_ready` and `countdown`.
-5. Each user requests `POST /api/rooms/:id/voice-token`, then joins the returned LiveKit `url` with the returned token. Tokens always grant subscription. In round one only pair A tokens grant publishing; the server also updates connected LiveKit participants when a round changes.
-6. The server emits `round_started` for pair A, `round_break` after the configured duration, then a second `round_started` for pair B with a different topic. Publish rights flip to pair B.
-7. After round two, `session_finished` is emitted, the room is persisted as history, and the LiveKit room is closed. `GET /api/me/sessions` returns paginated finished sessions.
+1. Register or log in four users with `POST /api/auth/register` or `/api/auth/login`, then connect each token to Socket.IO namespace `/me`.
+2. Each user calls `POST /api/matchmaking/queue`. The oldest compatible four are shuffled and committed as two separate two-person `Room` records in one database transaction.
+3. `/me` emits `matched { matchId, roomId, pairIndex, split }`. Each learner sees the 4→2+2 reveal and enters only their assigned room.
+4. Both users in each room connect to `/rooms` and emit `join { roomId }`. When both are present, the room emits `room_ready`; the two rooms then advance independently.
+5. `round_started` identifies the exact `speakerUserId` and `listenerUserId`. LiveKit grants publishing only to that Speaker. The Speaker may emit `topic_swap` twice with the default cap, while the server rejects Listener or over-cap attempts.
+6. After round one, `round_ended`, `role_swap`, and `round_break` are emitted. Round two offers a new topic plus `topic_choose_previous`; LiveKit publishing flips to the former Listener.
+7. After both users speak, `session_finished` persists both `RoomRound` records to history and closes that room's LiveKit session. The parallel room finishes on its own timer.
 
 Private rooms use `POST /api/rooms`, share the returned six-character `code`, and join through `POST /api/rooms/join`.
 
@@ -101,17 +102,19 @@ Administrative operations are grouped under `/api/admin`: stats, users, active r
 
 The backend is authoritative for all transitions. `roundEndsAt` is persisted for ready/round/break timers. On startup, round one, break, and round two rooms are rescheduled from that timestamp; an expired transition runs immediately. Because socket presence cannot survive a process restart, active-room participants are marked disconnected and receive a fresh reconnect grace period. A restart during the five-second ready countdown returns the room to waiting.
 
-Disconnects while waiting or ready free the seat immediately. During either round or the break, the participant is marked disconnected and gets 45 seconds to reconnect. Expiry aborts the session, closes LiveKit, and places the remaining matchmade users at the front of the PostgreSQL queue.
+Private-room disconnects while waiting free the seat immediately. If a matched participant leaves before start, that two-person room aborts and its remaining learner is requeued. During either round or the break, the disconnected participant gets 45 seconds to return; expiry aborts only that pair's room and closes its LiveKit session.
 
-## Matchmaking details and explicit v1 choices
+## Matchmaking and session details
 
 - The queue is ordered by `enqueuedAt`. The oldest user anchors each greedy search for three compatible users.
 - Normal groups have a maximum level distance of one step. Once the anchor has waited more than the widening threshold, its group may span two steps.
-- Incomplete waiting matchmade rooms are topped up before new rooms are formed.
-- Seat assignment is cryptographically shuffled for new matches; seats 1–2 are pair A and 3–4 pair B.
-- Private-room creators occupy seat 1. Registration immediately signs the new user in. Topic selection uses active topics matching any participant level plus `ALL`, and round two excludes round one's topic.
+- Each compatible group of four is cryptographically shuffled, then split into two pairs. Both two-person rooms are created atomically; they never share timers, audio, topics, or abort state.
+- Seat 1 speaks first and seat 2 speaks second, but runtime authority comes from persisted `RoomRound.speakerUserId`, not a client-supplied role.
+- Private-room creators occupy seat 1 and one invited partner occupies seat 2. Private rooms run the identical two-round mechanic.
+- Topic selection uses active topics matching either participant level plus `ALL`. A round never repeats a topic already shown during that round. The default cap is one initial suggestion plus two swaps.
+- Round two starts with a fresh suggestion and links to round one so the new Speaker can explicitly continue the previous topic.
 - Finished and aborted rooms are immutable. Aborted rooms have `finishedAt` set for operational auditing but are excluded from session history.
 
 ## Architecture
 
-HTTP handling follows routes → controllers → services → repositories. Matchmaking compatibility, state transitions, and disconnect decisions live in `src/domain` and have no Express, Socket.IO, or Prisma dependencies. A single coordinator owns in-process presence/timers; durable room status and deadlines remain in PostgreSQL. This v1 intentionally assumes one API process because Redis and distributed timer leadership are out of scope.
+HTTP handling follows routes → controllers → services → repositories. Matchmaking compatibility, topic-cap rules, state transitions, and disconnect decisions live in `src/domain`. A single coordinator owns in-process presence/timers; durable room, round, roles, topics, swap counts, and deadlines remain in PostgreSQL. This version intentionally assumes one API process because Redis and distributed timer leadership are out of scope.

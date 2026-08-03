@@ -20,15 +20,16 @@ If 5173 is already occupied, Vite prints the next available URL (for example `ht
 
 Alternatively, `docker compose up --build` at the repository root builds and serves the frontend through Nginx at `http://localhost:5174` (override with `FRONTEND_PORT`). Vite development continues to use port 5173.
 
-## Test a four-person match
+## Test the four-to-two-plus-two match
 
 1. Start the backend and frontend. The seed accounts are `demo1@example.com` through `demo8@example.com`, all using `DemoPass123!`.
 2. Open four **fresh** browser tabs, separate profiles, or incognito windows at `http://localhost:5173`. Session tokens use tab-scoped `sessionStorage`, so independent tabs can hold different users.
 3. Sign into four compatible accounts—for example demo 1–4, whose A2/B1 levels are within one step.
-4. Select **Find a partner** in each tab. Keep all four waiting screens open until each receives the same matched room.
-5. Allow microphone access only in the two tabs marked **You are speaking**. Use headphones or mute three physical outputs to prevent feedback when testing on one computer.
-6. Round one gives Pair A publish permission. During the break microphones are unpublished. Round two flips publish permission to Pair B.
-7. After `session_finished`, open History and confirm the two topics and three partners were saved.
+4. Select **Find a partner** in each tab. The reveal shows all four learners splitting into two pairs; each pair receives a different room ID.
+5. Allow microphone access only in the two tabs currently marked **You're speaking**—one Speaker in each independent room. Use headphones or mute extra physical outputs to prevent feedback.
+6. Swap the topic twice in either Speaker tab and confirm the third offer locks with visual/haptic feedback. Listener tabs cannot publish or swap.
+7. After the role hand-off, let each new Speaker either accept the new suggestion or choose **Continue previous topic**.
+8. After both independent `session_finished` events, confirm each History entry contains two topics and one partner.
 
 ## Onboarding, profile, and admin
 
@@ -38,7 +39,7 @@ Alternatively, `docker compose up --build` at the repository root builds and ser
 
 ## Mobile and accessibility notes
 
-- The authenticated shell uses a bottom tab bar below the desktop breakpoint. The room uses a 2×2 seat grid and keeps Leave and microphone controls fixed within thumb reach.
+- The authenticated shell uses a bottom tab bar below the desktop breakpoint. Two participant cards stack at 375px, and Leave/microphone controls stay fixed within thumb reach.
 - Safe-area padding is applied for notched devices. Auth and onboarding use document flow rather than a fixed viewport panel so the on-screen keyboard does not hide the active field.
 - Motion respects the operating system’s reduced-motion preference. No action depends on an animation finishing.
 - Listeners are intentionally never prompted for microphone permission. The browser asks only when that participant becomes a speaker and enables the microphone.
@@ -51,12 +52,12 @@ Vite production output before and after the craft pass (uncompressed / gzip):
 
 | Asset | Before | After |
 | --- | ---: | ---: |
-| Main application JS | 506.58 / 163.23 kB | 510.14 / 164.86 kB |
-| Live room JS | 552.53 / 144.86 kB | 555.74 / 145.80 kB |
-| Styles | 34.85 / 6.94 kB | 43.97 / 8.23 kB |
-| Admin JS | included in main | 13.49 / 3.94 kB, lazy-loaded |
+| Main application JS | 506.58 / 163.23 kB | 512.44 / 165.39 kB |
+| Live room JS | 552.53 / 144.86 kB | 556.90 / 145.95 kB |
+| Styles | 34.85 / 6.94 kB | 43.18 / 8.10 kB |
+| Admin JS | included in main | 13.49 / 3.95 kB, lazy-loaded |
 
-The main gzip payload grew by about 1%. The admin control panel is now a separate route chunk, so normal learners never download its implementation. Framer Motion remains the only animation runtime.
+The main gzip payload grew by about 1.3% while adding the 4→2+2 reveal and full two-person session choreography. The admin control panel remains a separate route chunk, so normal learners never download its implementation. Framer Motion remains the only animation runtime.
 
 For a faster manual test, set short non-production timer values in the backend environment or use the fake-timer integration suite. REST room creation still enforces round lengths between 5 and 10 minutes.
 

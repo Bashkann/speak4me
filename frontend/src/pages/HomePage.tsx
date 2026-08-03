@@ -86,7 +86,7 @@ export function HomePage() {
             </motion.span>
             <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Matchmaking</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold text-ink">Find a speaking room</h2>
-            <p className="mt-3 min-h-12 text-sm leading-6 text-slate-500">We’ll match you with three learners near your CEFR level.</p>
+            <p className="mt-3 min-h-12 text-sm leading-6 text-slate-500">We’ll gather four compatible learners, then split everyone into two focused conversation pairs.</p>
             <motion.button whileTap={{ scale: reducedMotion ? 1 : 0.98 }} type="button" className="primary-button mt-7 w-full" onClick={() => navigate('/waiting')}>Find a partner <motion.span aria-hidden="true" className="inline-block" animate={reducedMotion ? undefined : { x: [0, 3, 0] }} transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 1.5 }}>→</motion.span></motion.button>
             <p className="mt-3 text-center text-xs text-slate-400">Usually takes less than two minutes</p>
           </motion.article>
@@ -96,7 +96,7 @@ export function HomePage() {
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </motion.span>
             <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Private room</p>
-            <h2 className="mt-2 font-display text-2xl font-extrabold text-ink">Practice with invited people</h2>
+            <h2 className="mt-2 font-display text-2xl font-extrabold text-ink">Practice with an invited partner</h2>
 
             <AnimatePresence mode="wait" initial={false}>
             {createdRoom ? (
@@ -140,7 +140,7 @@ export function HomePage() {
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-xl" aria-hidden="true">🎧</span>
             <div><h2 className="font-display text-base font-extrabold">Before you join</h2><p className="mt-1 text-sm text-slate-500">Use headphones and check that your browser can access the microphone.</p></div>
           </div>
-          <span className="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">4 people · 2 rounds</span>
+          <span className="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">4 matched → 2-person rooms</span>
         </section>
       </div>
     </main>

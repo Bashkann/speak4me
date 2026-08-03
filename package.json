@@ -2,7 +2,7 @@
   "name": "english-speaking-rooms-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend API for four-person English speaking practice rooms",
+  "description": "Backend API for four-user matchmaking into focused two-person speaking rooms",
   "main": "dist/src/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
