@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Socket } from 'socket.io-client';
@@ -16,6 +16,7 @@ import { useToastStore } from '../store/toast-store';
 import type { Pair, RoomParticipant, RoomStatus } from '../types/rooms';
 
 export function RoomPage() {
+  const reducedMotion = useReducedMotion();
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -180,18 +181,19 @@ export function RoomPage() {
             <section>
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                 {[1, 2, 3, 4].map((seat) => (
-                  <SeatCard key={seat} seat={seat} participant={room.participants.find((item) => item.seat === seat)} speakingPair={session.speakingPair} currentUserId={user?.id} audioLevel={audio.audioLevels[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? 0} microphoneOn={audio.microphoneEnabled[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? false} />
+                  <SeatCard key={seat} seat={seat} participant={room.participants.find((item) => item.seat === seat)} speakingPair={session.speakingPair} currentUserId={user?.id} audioLevel={audio.audioLevels[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? 0} microphoneOn={audio.microphoneEnabled[room.participants.find((item) => item.seat === seat)?.userId ?? ''] ?? false} reducedMotion={Boolean(reducedMotion)} />
                 ))}
               </div>
             </section>
 
             <aside className="space-y-5">
               <AnimatePresence mode="wait" initial={false}>
-              <motion.section key={`${room.status}-${myRole ?? 'waiting'}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }} className={`overflow-hidden rounded-3xl p-6 ${myRole === 'speaker' ? 'bg-brand-700 text-white shadow-glow' : myRole === 'listener' ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-ink'}`}>
+              <motion.section key={`${room.status}-${myRole ?? 'waiting'}`} initial={{ opacity: 0, y: reducedMotion ? 0 : 8, scale: reducedMotion ? 1 : 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -5, scale: reducedMotion ? 1 : 0.99 }} transition={{ duration: reducedMotion ? 0.08 : 0.2 }} className={`relative overflow-hidden rounded-3xl p-6 ${myRole === 'speaker' ? 'bg-brand-700 text-white shadow-glow' : myRole === 'listener' ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-ink'}`}>
                 {myRole ? (
                   <>
+                    {myRole === 'speaker' && <motion.span aria-hidden="true" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: [0, 0.22, 0], scale: [0.7, 1.5, 1.8] }} transition={{ duration: reducedMotion ? 0 : 0.7 }} className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full border border-white" />}
                     <p className={`text-xs font-bold uppercase tracking-[0.18em] ${myRole === 'speaker' ? 'text-brand-200' : 'text-slate-400'}`}>Your role</p>
-                    <h2 className="mt-3 font-display text-3xl font-extrabold">You are {myRole === 'speaker' ? 'speaking' : 'listening'}</h2>
+                    <motion.h2 initial={{ opacity: 0, x: reducedMotion ? 0 : -7 }} animate={{ opacity: 1, x: 0 }} className="mt-3 font-display text-3xl font-extrabold">{myRole === 'speaker' ? 'Now you speak' : 'Now you listen'}</motion.h2>
                     <p className={`mt-3 text-sm leading-6 ${myRole === 'speaker' ? 'text-brand-100' : 'text-slate-300'}`}>{myRole === 'speaker' ? 'Share the conversation with your pair. Your microphone will be available.' : 'Listen closely. Your microphone stays off for this round.'}</p>
                   </>
                 ) : (
@@ -217,14 +219,14 @@ export function RoomPage() {
   );
 }
 
-function SeatCard({ seat, participant, speakingPair, currentUserId, audioLevel, microphoneOn }: { seat: number; participant?: RoomParticipant; speakingPair: Pair | null; currentUserId?: string; audioLevel: number; microphoneOn: boolean }) {
-  if (!participant) return <motion.div layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="grid min-h-44 place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/50 p-3 text-center sm:min-h-52 sm:rounded-3xl sm:p-6"><div><motion.span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-400 sm:h-14 sm:w-14 sm:text-sm" animate={{ opacity: [0.55, 1, 0.55] }} transition={{ duration: 2, repeat: Infinity }}>{seat}</motion.span><p className="mt-3 text-xs font-semibold text-slate-400 sm:text-sm">Waiting for someone…</p></div></motion.div>;
+function SeatCard({ seat, participant, speakingPair, currentUserId, audioLevel, microphoneOn, reducedMotion }: { seat: number; participant?: RoomParticipant; speakingPair: Pair | null; currentUserId?: string; audioLevel: number; microphoneOn: boolean; reducedMotion: boolean }) {
+  if (!participant) return <motion.div layout initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.96 }} animate={{ opacity: 1, scale: 1 }} className="grid min-h-44 place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/50 p-3 text-center sm:min-h-52 sm:rounded-3xl sm:p-6"><div><motion.span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-400 sm:h-14 sm:w-14 sm:text-sm" animate={reducedMotion ? { opacity: 0.75 } : { opacity: [0.55, 1, 0.55] }} transition={{ duration: 2, repeat: reducedMotion ? 0 : Infinity }}>{seat}</motion.span><p className="mt-3 text-xs font-semibold text-slate-400 sm:text-sm">Waiting for someone…</p></div></motion.div>;
   const isSpeaker = speakingPair === participant.pair;
   const isMe = participant.userId === currentUserId;
   const isActivelySpeaking = audioLevel > 0.05;
   return (
-    <motion.article layout initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.22, delay: seat * 0.035 }} className={`relative min-h-44 overflow-hidden rounded-2xl border bg-white p-3 transition sm:min-h-52 sm:rounded-3xl sm:p-6 ${isMe ? 'border-brand-400 ring-2 ring-brand-100 sm:ring-4' : isSpeaker ? 'border-brand-200' : 'border-slate-200'} ${isActivelySpeaking ? 'shadow-glow ring-2 ring-brand-300' : ''}`}>
-      {isActivelySpeaking && <motion.span className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-brand-400 sm:rounded-3xl" animate={{ opacity: [0.35, 1, 0.35], scale: [0.99, 1.01, 0.99] }} transition={{ duration: 1.2, repeat: Infinity }} />}
+    <motion.article layout initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.9, y: reducedMotion ? 0 : 10 }} animate={{ opacity: participant.connected ? (speakingPair && !isSpeaker ? 0.74 : 1) : 0.48, scale: participant.connected ? 1 : 0.985, y: 0 }} transition={reducedMotion ? { duration: 0.08 } : { type: 'spring', stiffness: 390, damping: 28, delay: seat * 0.025 }} className={`relative min-h-44 overflow-hidden rounded-2xl border bg-white p-3 transition-shadow sm:min-h-52 sm:rounded-3xl sm:p-6 ${isMe ? 'border-brand-400 ring-2 ring-brand-100 sm:ring-4' : isSpeaker ? 'border-brand-200' : 'border-slate-200'} ${isActivelySpeaking ? 'shadow-glow ring-2 ring-brand-300' : ''}`}>
+      {isActivelySpeaking && <motion.span className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-brand-400 sm:rounded-3xl" initial={{ opacity: 0 }} animate={{ opacity: Math.min(0.9, 0.28 + audioLevel * 3), scale: reducedMotion ? 1 : 1 + Math.min(0.012, audioLevel * 0.02) }} transition={{ duration: 0.12 }} />}
       <div className="flex items-start justify-between gap-3">
         <div className="relative"><span className={`grid h-11 w-11 place-items-center rounded-xl font-display text-sm font-extrabold sm:h-16 sm:w-16 sm:rounded-2xl sm:text-lg ${isSpeaker ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{initials(participant.displayName)}</span><span className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${participant.connected ? 'bg-emerald-500' : 'bg-slate-300'}`} aria-label={participant.connected ? 'Connected' : 'Disconnected'} /></div>
         <span className={`rounded-full px-2 py-1 text-[10px] font-bold sm:px-2.5 sm:text-xs ${isSpeaker ? 'bg-brand-100 text-brand-800' : speakingPair ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700'}`}>{speakingPair ? (isSpeaker ? 'Speaking' : 'Listening') : `Pair ${participant.pair}`}</span>
@@ -237,15 +239,18 @@ function SeatCard({ seat, participant, speakingPair, currentUserId, audioLevel, 
 }
 
 function Timer({ remainingSec, label }: { remainingSec: number; label: string }) {
-  return <div className="flex items-center gap-3"><div className="text-right"><p className="text-xs font-semibold text-slate-400">{label}</p><motion.p key={remainingSec} initial={{ opacity: 0.55, y: -2 }} animate={{ opacity: 1, y: 0 }} className="font-display text-xl font-extrabold tabular-nums text-ink">{formatTime(remainingSec)}</motion.p></div><span className={`h-2.5 w-2.5 rounded-full ${remainingSec <= 10 ? 'animate-pulse bg-amber-500' : 'bg-brand-500'}`} /></div>;
+  const reducedMotion = useReducedMotion();
+  const urgent = remainingSec <= 10;
+  return <div className={`flex items-center gap-3 rounded-xl px-2 py-1 transition-colors ${urgent ? 'bg-amber-50' : ''}`}><div className="text-right"><p className="text-xs font-semibold text-slate-400">{label}</p><motion.p key={remainingSec} initial={{ opacity: 0.7, scale: reducedMotion ? 1 : urgent ? 1.08 : 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: reducedMotion ? 0.05 : 0.16 }} className={`min-w-[4.2rem] font-display text-xl font-extrabold tabular-nums ${urgent ? 'text-amber-700' : 'text-ink'}`}>{formatTime(remainingSec)}</motion.p></div><motion.span animate={urgent && !reducedMotion ? { scale: [1, 1.28, 1] } : { scale: 1 }} transition={{ duration: 0.5 }} className={`h-2.5 w-2.5 rounded-full ${urgent ? 'bg-amber-500' : 'bg-brand-500'}`} /></div>;
 }
 
 function MobileRoomControls({ role, audio, isLeaving, onLeave }: { role: 'speaker' | 'listener' | null; audio: ReturnType<typeof useLiveKitAudio>; isLeaving: boolean; onLeave: () => Promise<void> }) {
   const connected = audio.connectionState === 'connected';
+  const reducedMotion = useReducedMotion();
   return (
     <div className="safe-bottom fixed inset-x-3 bottom-2 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 p-2.5 shadow-soft backdrop-blur-xl md:hidden">
       <button type="button" onClick={() => void onLeave()} disabled={isLeaving} className="min-h-14 flex-1 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-red-700 disabled:opacity-50">{isLeaving ? 'Leaving…' : 'Leave room'}</button>
-      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => void audio.toggleMicrophone()} disabled={role !== 'speaker' || !connected || audio.microphoneState === 'starting'} className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl ${role === 'speaker' && audio.microphoneState === 'on' ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-400'}`} aria-label={audio.microphoneState === 'on' ? 'Mute microphone' : 'Unmute microphone'}><MicIcon muted={audio.microphoneState !== 'on'} /></motion.button>
+      <motion.button animate={{ scale: audio.microphoneState === 'starting' && !reducedMotion ? 0.94 : 1 }} whileTap={{ scale: reducedMotion ? 1 : 0.92 }} type="button" onClick={() => void audio.toggleMicrophone()} disabled={role !== 'speaker' || !connected || audio.microphoneState === 'starting'} className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl transition-colors ${role === 'speaker' && audio.microphoneState === 'on' ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-400'}`} aria-label={audio.microphoneState === 'on' ? 'Mute microphone' : 'Unmute microphone'}><motion.span key={audio.microphoneState} initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.75 }} animate={{ opacity: 1, scale: 1 }}><MicIcon muted={audio.microphoneState !== 'on'} /></motion.span></motion.button>
     </div>
   );
 }
@@ -256,15 +261,16 @@ function ConnectionPill({ state }: { state: 'connecting' | 'connected' | 'reconn
 
 function AudioControls({ role, audio }: { role: 'speaker' | 'listener' | null; audio: ReturnType<typeof useLiveKitAudio> }) {
   const connected = audio.connectionState === 'connected';
+  const reducedMotion = useReducedMotion();
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5">
       <div className="flex items-center justify-between gap-3">
         <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-400">Live audio</p><p className={`mt-1 text-sm font-extrabold ${connected ? 'text-brand-700' : 'text-amber-700'}`}>{connected ? 'Connected' : audio.connectionState === 'connecting' ? 'Connecting…' : 'Disconnected'}</p></div>
         {role === 'speaker' ? (
-          <button type="button" onClick={() => void audio.toggleMicrophone()} disabled={!connected || audio.microphoneState === 'starting'} aria-label={audio.microphoneState === 'on' ? 'Mute microphone' : 'Unmute microphone'}
+          <motion.button animate={{ scale: audio.microphoneState === 'starting' && !reducedMotion ? 0.94 : 1 }} whileTap={{ scale: reducedMotion ? 1 : 0.9 }} type="button" onClick={() => void audio.toggleMicrophone()} disabled={!connected || audio.microphoneState === 'starting'} aria-label={audio.microphoneState === 'on' ? 'Mute microphone' : 'Unmute microphone'}
             className={`grid h-12 w-12 place-items-center rounded-full transition ${audio.microphoneState === 'on' ? 'bg-brand-700 text-white hover:bg-brand-800' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
-            <MicIcon muted={audio.microphoneState !== 'on'} />
-          </button>
+            <motion.span key={audio.microphoneState} initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.72, rotate: reducedMotion ? 0 : -8 }} animate={{ opacity: 1, scale: 1, rotate: 0 }}><MicIcon muted={audio.microphoneState !== 'on'} /></motion.span>
+          </motion.button>
         ) : <span className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-slate-400"><MicIcon muted /></span>}
       </div>
       <p className="mt-3 text-xs leading-5 text-slate-500">{microphoneHint(role, audio.microphoneState)}</p>
