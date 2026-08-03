@@ -14,10 +14,12 @@ const productionEnv: NodeJS.ProcessEnv = {
 
 describe('production configuration', () => {
   it('normalizes the configured CORS allowlist', () => {
-    expect(loadConfig(productionEnv).CORS_ORIGIN).toEqual([
+    const config = loadConfig(productionEnv);
+    expect(config.CORS_ORIGIN).toEqual([
       'https://speak.example.com',
       'https://www.speak.example.com',
     ]);
+    expect(config.TOPIC_OFFER_CAP).toBe(3);
   });
 
   it('rejects insecure production browser and media URLs', () => {

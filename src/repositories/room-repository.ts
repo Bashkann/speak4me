@@ -187,16 +187,43 @@ export class RoomRepository {
     });
   }
 
-  async randomTopic(levels: EnglishLevel[], excludeId?: string) {
+  async randomTopic(levels: EnglishLevel[], excludeIds: string[] = []) {
     const allowed = [...new Set([...levels, 'ALL' as const])];
     const where: Prisma.TopicWhereInput = {
       isActive: true,
       level: { in: allowed },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
+      ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
     };
     const count = await this.db.topic.count({ where });
     if (!count) return null;
     return this.db.topic.findFirst({ where, skip: Math.floor(Math.random() * count) });
+  }
+
+  async updateRoundTopic(
+    roundId: string,
+    expectedSwapCount: number,
+    input: { topicId: string; shownTopicIds: string[]; topicSwapCount: number; topicLocked: boolean },
+  ) {
+    const updated = await this.db.roomRound.updateMany({
+      where: { id: roundId, topicSwapCount: expectedSwapCount, topicLocked: false, endedAt: null },
+      data: input,
+    });
+    if (!updated.count) return null;
+    return this.db.roomRound.findUnique({ where: { id: roundId }, include: { topic: true, previousRound: { include: { topic: true } } } });
+  }
+
+  async lockRoundTopic(roundId: string) {
+    await this.db.roomRound.updateMany({ where: { id: roundId, endedAt: null }, data: { topicLocked: true } });
+    return this.db.roomRound.findUnique({ where: { id: roundId }, include: { topic: true, previousRound: { include: { topic: true } } } });
+  }
+
+  async choosePreviousTopic(roundId: string, topicId: string, shownTopicIds: string[]) {
+    const updated = await this.db.roomRound.updateMany({
+      where: { id: roundId, roundNo: 2, continuedPrevious: false, endedAt: null },
+      data: { topicId, shownTopicIds, continuedPrevious: true },
+    });
+    if (!updated.count) return null;
+    return this.db.roomRound.findUnique({ where: { id: roundId }, include: { topic: true, previousRound: { include: { topic: true } } } });
   }
 
   recoverableRooms() {

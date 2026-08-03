@@ -19,6 +19,7 @@ export const testConfig: AppConfig = {
   ROUND_BREAK_SEC: 20,
   RECONNECT_GRACE_SEC: 45,
   DEFAULT_ROUND_DURATION_SEC: 420,
+  TOPIC_OFFER_CAP: 3,
   LOG_LEVEL: 'silent',
 };
 

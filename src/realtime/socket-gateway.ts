@@ -8,6 +8,7 @@ import { TokenService } from '../services/token-service';
 import { RealtimePublisher } from './publisher';
 
 const joinSchema = z.object({ roomId: z.string().uuid() });
+const roomActionSchema = z.object({ roomId: z.string().uuid() });
 type AuthenticatedSocket = Socket & { data: { userId: string } };
 
 export function configureSockets(
@@ -71,6 +72,27 @@ export function configureSockets(
         } catch (error) {
           emitSocketError(socket, error);
         }
+      }
+    });
+
+    socket.on('topic_swap', async (payload: unknown) => {
+      try {
+        const { roomId } = roomActionSchema.parse(payload);
+        if (!joined.has(roomId)) throw new AppError(403, 'NOT_IN_ROOM', 'Join the room channel first');
+        const result = await coordinator.swapTopic(roomId, socket.data.userId);
+        if (result === 'locked') socket.emit('topic_locked', {});
+      } catch (error) {
+        emitSocketError(socket, error);
+      }
+    });
+
+    socket.on('topic_choose_previous', async (payload: unknown) => {
+      try {
+        const { roomId } = roomActionSchema.parse(payload);
+        if (!joined.has(roomId)) throw new AppError(403, 'NOT_IN_ROOM', 'Join the room channel first');
+        await coordinator.choosePreviousTopic(roomId, socket.data.userId);
+      } catch (error) {
+        emitSocketError(socket, error);
       }
     });
 

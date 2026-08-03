@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { AppConfig } from '../config';
 import { AppError } from '../lib/errors';
+import { swapsRemaining } from '../domain/session-mechanic';
 import { RoomRepository, type DetailedRoom } from '../repositories/room-repository';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -74,6 +75,13 @@ export class RoomService {
         listenerUserId: activeRound.listenerUserId,
         topic: activeRound.topic ? { id: activeRound.topic.id, textEn: activeRound.topic.textEn } : null,
         endsAt: activeRound.endsAt,
+        swapsRemaining: swapsRemaining(activeRound.topicSwapCount, this.config.TOPIC_OFFER_CAP),
+        topicLocked: activeRound.topicLocked,
+        canContinuePrevious: activeRound.roundNo === 2 && Boolean(activeRound.previousRound?.topic),
+        previousTopic: activeRound.previousRound?.topic
+          ? { id: activeRound.previousRound.topic.id, textEn: activeRound.previousRound.topic.textEn }
+          : null,
+        continuedPrevious: activeRound.continuedPrevious,
       } : null,
       participants: room.participants
         .filter((participant) => !participant.leftAt || ['finished', 'aborted'].includes(room.status))

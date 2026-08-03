@@ -1,6 +1,7 @@
 import type { EnglishLevel } from '@prisma/client';
 import type { AppConfig } from '../config';
 import { disconnectAction } from '../domain/disconnect';
+import { swapRoles, swapsRemaining, topicOfferLocked } from '../domain/session-mechanic';
 import { AppError } from '../lib/errors';
 import type { AppLogger } from '../lib/logger';
 import { RealtimePublisher } from '../realtime/publisher';
@@ -46,6 +47,69 @@ export class RoomCoordinator {
     if (!room || ['finished', 'aborted'].includes(room.status)) return false;
     await this.abort(roomId, reason);
     return true;
+  }
+
+  async swapTopic(roomId: string, userId: string): Promise<'updated' | 'locked'> {
+    const room = await this.repository.findDetailed(roomId);
+    const round = room?.rounds.find((item) => item.roundNo === room.currentRound && !item.endedAt);
+    if (!room || !round || !['round1', 'round2'].includes(room.status)) {
+      throw new AppError(409, 'ROUND_NOT_ACTIVE', 'The speaking round is not active');
+    }
+    if (round.speakerUserId !== userId) throw new AppError(403, 'SPEAKER_ONLY', 'Only the current speaker can swap topics');
+
+    const remaining = swapsRemaining(round.topicSwapCount, this.config.TOPIC_OFFER_CAP);
+    if (round.topicLocked || remaining === 0) {
+      await this.repository.lockRoundTopic(round.id);
+      return 'locked';
+    }
+    const topic = await this.repository.randomTopic(
+      room.participants.map((participant) => participant.user.englishLevel),
+      round.shownTopicIds,
+    );
+    if (!topic) {
+      await this.repository.lockRoundTopic(round.id);
+      return 'locked';
+    }
+    const topicSwapCount = round.topicSwapCount + 1;
+    const topicLocked = topicOfferLocked(topicSwapCount, this.config.TOPIC_OFFER_CAP);
+    const updated = await this.repository.updateRoundTopic(round.id, round.topicSwapCount, {
+      topicId: topic.id,
+      shownTopicIds: [...round.shownTopicIds, topic.id],
+      topicSwapCount,
+      topicLocked,
+    });
+    if (!updated?.topic) return 'locked';
+    this.publisher.room(roomId, 'topic_updated', {
+      topic: { id: updated.topic.id, textEn: updated.topic.textEn },
+      swapsRemaining: swapsRemaining(updated.topicSwapCount, this.config.TOPIC_OFFER_CAP),
+      topicLocked: updated.topicLocked,
+      continuedPrevious: false,
+    });
+    return 'updated';
+  }
+
+  async choosePreviousTopic(roomId: string, userId: string): Promise<void> {
+    const room = await this.repository.findDetailed(roomId);
+    const round = room?.rounds.find((item) => item.roundNo === room.currentRound && !item.endedAt);
+    if (!room || room.status !== 'round2' || !round || round.roundNo !== 2) {
+      throw new AppError(409, 'PREVIOUS_TOPIC_UNAVAILABLE', 'The previous topic is not available');
+    }
+    if (round.speakerUserId !== userId) throw new AppError(403, 'SPEAKER_ONLY', 'Only the current speaker can choose the topic');
+    const previousTopic = round.previousRound?.topic;
+    if (!previousTopic) throw new AppError(409, 'PREVIOUS_TOPIC_UNAVAILABLE', 'The previous topic is not available');
+
+    const updated = await this.repository.choosePreviousTopic(
+      round.id,
+      previousTopic.id,
+      [...new Set([...round.shownTopicIds, previousTopic.id])],
+    );
+    if (!updated?.topic) return;
+    this.publisher.room(roomId, 'topic_updated', {
+      topic: { id: updated.topic.id, textEn: updated.topic.textEn },
+      swapsRemaining: swapsRemaining(updated.topicSwapCount, this.config.TOPIC_OFFER_CAP),
+      topicLocked: updated.topicLocked,
+      continuedPrevious: true,
+    });
   }
 
   async connect(roomId: string, userId: string, socketId: string) {
@@ -168,7 +232,7 @@ export class RoomCoordinator {
       return;
     }
     const levels = participants.map((participant) => participant.user.englishLevel);
-    const topic = await this.repository.randomTopic(levels, round === 2 ? previousRound?.topicId ?? undefined : undefined);
+    const topic = await this.repository.randomTopic(levels, previousRound?.topicId ? [previousRound.topicId] : []);
     if (!topic) {
       await this.abort(room.id, 'no_active_topics');
       return;
@@ -190,6 +254,10 @@ export class RoomCoordinator {
       listenerUserId: listener.userId,
       topic: { id: topic.id, textEn: topic.textEn },
       endsAt,
+      swapsRemaining: this.config.TOPIC_OFFER_CAP - 1,
+      topicLocked: this.config.TOPIC_OFFER_CAP === 1,
+      canContinuePrevious: round === 2 && Boolean(previousRound?.topic),
+      previousTopic: round === 2 && previousRound?.topic ? { id: previousRound.topic.id, textEn: previousRound.topic.textEn } : null,
     });
     this.scheduleStateTimer(current);
   }
@@ -205,10 +273,7 @@ export class RoomCoordinator {
     if (!current) return;
     await this.voice.updatePermissions(current, null);
     this.publisher.room(room.id, 'round_ended', { roundNo: 1 });
-    this.publisher.room(room.id, 'role_swap', {
-      nextSpeakerUserId: completedRound.listenerUserId,
-      nextListenerUserId: completedRound.speakerUserId,
-    });
+    this.publisher.room(room.id, 'role_swap', swapRoles(completedRound.speakerUserId, completedRound.listenerUserId));
     this.publisher.room(room.id, 'round_break', { endsAt });
     this.scheduleStateTimer(current);
   }

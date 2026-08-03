@@ -47,6 +47,7 @@ const envSchema = z.object({
   ROUND_BREAK_SEC: z.coerce.number().int().nonnegative().default(20),
   RECONNECT_GRACE_SEC: z.coerce.number().int().nonnegative().default(45),
   DEFAULT_ROUND_DURATION_SEC: z.coerce.number().int().min(300).max(600).default(420),
+  TOPIC_OFFER_CAP: z.coerce.number().int().min(1).max(10).default(3),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 }).superRefine((config, context) => {
   if (config.NODE_ENV !== 'production') return;
