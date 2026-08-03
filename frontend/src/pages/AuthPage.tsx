@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Brand } from '../components/Brand';
 import { login } from '../api/auth';
@@ -7,6 +8,7 @@ import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { OnboardingWizard } from '../components/OnboardingWizard';
+import { FloatingField } from '../components/FloatingField';
 import type { AuthResponse } from '../types/api';
 
 type AuthMode = 'login' | 'register';
@@ -14,9 +16,14 @@ type AuthMode = 'login' | 'register';
 export function AuthPage() {
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
+  const reducedMotion = useReducedMotion();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginErrors, setLoginErrors] = useState<{ email?: string; password?: string }>({});
+  const [authComplete, setAuthComplete] = useState(false);
+  const redirectTimer = useRef<number | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => login({ email, password }),
@@ -25,37 +32,49 @@ export function AuthPage() {
 
   function completeAuth(session: AuthResponse) {
     setSession(session);
-    navigate('/', { replace: true });
+    setAuthComplete(true);
+    redirectTimer.current = window.setTimeout(() => navigate('/', { replace: true }), reducedMotion ? 80 : 260);
   }
+
+  useEffect(() => () => { if (redirectTimer.current) window.clearTimeout(redirectTimer.current); }, []);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    const nextErrors = {
+      ...(!/\S+@\S+\.\S+/.test(email) ? { email: 'Enter a valid email address.' } : {}),
+      ...(password.length < 8 ? { password: 'Password must be at least 8 characters.' } : {}),
+    };
+    setLoginErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     mutation.mutate();
   };
 
   const changeMode = (nextMode: AuthMode) => {
     mutation.reset();
+    setLoginErrors({});
+    setAuthComplete(false);
     setMode(nextMode);
   };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-canvas px-4 py-5 sm:px-6 lg:px-8">
       <div className="absolute right-6 top-6 z-20"><ThemeToggle compact /></div>
-      <div className="pointer-events-none absolute -left-24 top-24 h-72 w-72 rounded-full bg-brand-200/60 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-amber-100/80 blur-3xl" />
+      <motion.div aria-hidden="true" className="pointer-events-none absolute -left-24 top-24 h-72 w-72 rounded-full bg-brand-200/55 blur-3xl" animate={reducedMotion ? undefined : { x: [0, 24, -8, 0], y: [0, -18, 12, 0], scale: [1, 1.06, 0.98, 1] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div aria-hidden="true" className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-amber-100/70 blur-3xl" animate={reducedMotion ? undefined : { x: [0, -28, 10, 0], y: [0, 16, -12, 0], scale: [1, 0.96, 1.05, 1] }} transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div aria-hidden="true" className="pointer-events-none absolute left-[42%] top-[-8rem] h-64 w-64 rounded-full bg-sky-100/50 blur-3xl" animate={reducedMotion ? undefined : { x: [0, 18, -12, 0], y: [0, 26, 4, 0] }} transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }} />
 
       <div className="relative mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-soft lg:grid-cols-[1.08fr_0.92fr]">
         <section className="relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #7bd9ad 1px, transparent 0)', backgroundSize: '28px 28px' }} />
-          <div className="relative">
+          <div className="relative [&>span]:!text-white">
             <Brand linked={false} />
           </div>
           <div className="relative max-w-md pb-8">
             <div className="mb-6 flex -space-x-2">
               {['AM', 'JT', 'NL', 'SK'].map((initials, index) => (
-                <span key={initials} className="grid h-11 w-11 place-items-center rounded-full border-2 border-ink bg-brand-500 text-xs font-bold" style={{ opacity: 1 - index * 0.12 }}>
+                <motion.span key={initials} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1 - index * 0.12, x: 0 }} transition={{ delay: reducedMotion ? 0 : index * 0.04 }} className="grid h-11 w-11 place-items-center rounded-full border-2 border-ink bg-brand-500 text-xs font-bold">
                   {initials}
-                </span>
+                </motion.span>
               ))}
             </div>
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-brand-300">Four people. Two conversations.</p>
@@ -78,29 +97,36 @@ export function AuthPage() {
               {mode === 'login' ? 'Sign in and find your next speaking room.' : 'Pick your current English level. You can change it later.'}
             </p>
 
-            <div className="mt-8 grid grid-cols-2 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Authentication mode">
+            <div className="relative mt-8 grid grid-cols-2 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Authentication mode">
               {(['login', 'register'] as const).map((tab) => (
                 <button key={tab} type="button" role="tab" aria-selected={mode === tab} onClick={() => changeMode(tab)}
-                  className={`rounded-lg px-3 py-2.5 text-sm font-bold capitalize transition ${mode === tab ? 'bg-white text-ink shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                  {tab === 'login' ? 'Log in' : 'Register'}
+                  className={`relative z-10 rounded-lg px-3 py-2.5 text-sm font-bold capitalize transition-colors ${mode === tab ? 'text-ink' : 'text-slate-500 hover:text-slate-700'}`}>
+                  {mode === tab && <motion.span layoutId="auth-tab-indicator" className="absolute inset-0 -z-10 rounded-lg bg-white shadow-sm" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 38 }} />}
+                  <span>{tab === 'login' ? 'Log in' : 'Register'}</span>
                 </button>
               ))}
             </div>
 
             {mode === 'login' ? (
-              <form className="mt-7 space-y-4" onSubmit={submit}>
-                <div>
-                  <label className="label" htmlFor="email">Email address</label>
-                  <input className="field" id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
-                </div>
-                <div>
-                  <label className="label" htmlFor="password">Password</label>
-                  <input className="field" id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-                </div>
-                {mutation.isError && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{getApiErrorMessage(mutation.error, 'Unable to sign in.')}</div>}
-                <button className="primary-button mt-2 w-full" type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Please wait…' : 'Log in'}</button>
-              </form>
-            ) : <OnboardingWizard onSuccess={completeAuth} />}
+                <motion.form key="login" noValidate initial={{ opacity: 0, x: reducedMotion ? 0 : -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: reducedMotion ? 0.08 : 0.18 }} className="mt-7 space-y-1" onSubmit={submit}>
+                  <motion.div animate={loginErrors.email ? { x: [0, -5, 4, -3, 0] } : { x: 0 }} transition={{ duration: reducedMotion ? 0 : 0.28 }}>
+                    <FloatingField id="email" label="Email address" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setLoginErrors((current) => ({ ...current, email: undefined })); mutation.reset(); }} error={loginErrors.email} />
+                  </motion.div>
+                  <motion.div animate={loginErrors.password ? { x: [0, -5, 4, -3, 0] } : { x: 0 }} transition={{ duration: reducedMotion ? 0 : 0.28 }}>
+                    <FloatingField id="password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(event) => { setPassword(event.target.value); setLoginErrors((current) => ({ ...current, password: undefined })); mutation.reset(); }} error={loginErrors.password} endAdornment={<motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => setShowPassword((value) => !value)} className="min-w-14 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}><AnimatePresence mode="wait" initial={false}><motion.span key={showPassword ? 'hide' : 'show'} initial={{ opacity: 0, y: reducedMotion ? 0 : 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -3 }} transition={{ duration: 0.12 }}>{showPassword ? 'Hide' : 'Show'}</motion.span></AnimatePresence></motion.button>} />
+                  </motion.div>
+                  <div className="min-h-[3.6rem] pt-1">
+                    <AnimatePresence initial={false}>{mutation.isError && <motion.div role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{getApiErrorMessage(mutation.error, 'Unable to sign in.')}</motion.div>}</AnimatePresence>
+                  </div>
+                  <motion.button whileTap={{ scale: reducedMotion ? 1 : 0.98 }} className="primary-button w-full" type="submit" disabled={mutation.isPending || authComplete}>
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.span key={authComplete ? 'success' : mutation.isPending ? 'pending' : 'idle'} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="inline-flex items-center gap-2">
+                        {authComplete ? <><span className="grid h-5 w-5 place-items-center rounded-full bg-white text-xs text-brand-700">✓</span>Welcome back</> : mutation.isPending ? <><span className="inline-spinner" />Signing in…</> : 'Log in'}
+                      </motion.span>
+                    </AnimatePresence>
+                  </motion.button>
+                </motion.form>
+              ) : <motion.div key="register" initial={{ opacity: 0, x: reducedMotion ? 0 : 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: reducedMotion ? 0.08 : 0.18 }}><OnboardingWizard onSuccess={completeAuth} /></motion.div>}
 
             <p className="mt-8 text-center text-xs leading-5 text-slate-400">This is a development test app. Use headphones to prevent audio feedback.</p>
           </div>
