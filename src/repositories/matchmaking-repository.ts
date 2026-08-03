@@ -1,5 +1,16 @@
 import type { EnglishLevel, PrismaClient } from '@prisma/client';
 
+export interface SplitMatchParticipant {
+  userId: string;
+  displayName: string;
+  englishLevel: EnglishLevel;
+}
+
+export interface SplitMatchRoom {
+  roomId: string;
+  participants: SplitMatchParticipant[];
+}
+
 export class MatchmakingRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -47,63 +58,50 @@ export class MatchmakingRepository {
     return this.db.matchQueueEntry.findMany({ orderBy: { enqueuedAt: 'asc' } });
   }
 
-  incompleteMatchmadeRooms() {
-    return this.db.room.findMany({
-      where: { type: 'matchmade', status: 'waiting' },
-      include: {
-        participants: {
-          where: { leftAt: null },
-          include: { user: { select: { englishLevel: true } } },
-          orderBy: { seat: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-  }
-
-  async fillRoom(
-    roomId: string,
-    entries: Array<{ id: string; userId: string }>,
-    occupiedSeats: number[],
-  ): Promise<boolean> {
-    return this.db.$transaction(async (tx) => {
-      const deleted = await tx.matchQueueEntry.deleteMany({ where: { id: { in: entries.map((entry) => entry.id) } } });
-      if (deleted.count !== entries.length) return false;
-      const freeSeats = [1, 2, 3, 4].filter((seat) => !occupiedSeats.includes(seat));
-      await Promise.all(entries.map((entry, index) => {
-        const seat = freeSeats[index]!;
-        return tx.roomParticipant.create({
-          data: { roomId, userId: entry.userId, seat, pair: seat <= 2 ? 'A' : 'B' },
-        });
-      }));
-      return true;
-    });
-  }
-
   async createMatch(
-    code: string,
-    entries: Array<{ id: string; userId: string }>,
+    codes: [string, string],
+    pairs: [Array<{ id: string; userId: string }>, Array<{ id: string; userId: string }>],
     roundDurationSec: number,
-    seats: number[],
-  ): Promise<string | null> {
+  ): Promise<SplitMatchRoom[] | null> {
     return this.db.$transaction(async (tx) => {
+      const entries = pairs.flat();
       const deleted = await tx.matchQueueEntry.deleteMany({ where: { id: { in: entries.map((entry) => entry.id) } } });
       if (deleted.count !== entries.length) return null;
-      const room = await tx.room.create({
-        data: {
-          code,
-          type: 'matchmade',
-          roundDurationSec,
-          participants: {
-            create: entries.map((entry, index) => ({
-              userId: entry.userId,
-              seat: seats[index]!,
-              pair: seats[index]! <= 2 ? 'A' : 'B',
-            })),
+
+      const rooms: SplitMatchRoom[] = [];
+      for (let pairIndex = 0; pairIndex < pairs.length; pairIndex += 1) {
+        const pair = pairs[pairIndex]!;
+        const room = await tx.room.create({
+          data: {
+            code: codes[pairIndex]!,
+            type: 'matchmade',
+            capacity: 2,
+            roundDurationSec,
+            participants: {
+              create: pair.map((entry, index) => ({
+                userId: entry.userId,
+                seat: index + 1,
+                pair: index === 0 ? 'A' : 'B',
+              })),
+            },
           },
-        },
-      });
-      return room.id;
+          include: {
+            participants: {
+              orderBy: { seat: 'asc' },
+              include: { user: { select: { displayName: true, englishLevel: true } } },
+            },
+          },
+        });
+        rooms.push({
+          roomId: room.id,
+          participants: room.participants.map((participant) => ({
+            userId: participant.userId,
+            displayName: participant.user.displayName,
+            englishLevel: participant.user.englishLevel,
+          })),
+        });
+      }
+      return rooms;
     });
   }
 }

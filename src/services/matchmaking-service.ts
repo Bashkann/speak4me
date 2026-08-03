@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { AppConfig } from '../config';
-import { candidatesForSeats, groupQueueEntries } from '../domain/matchmaking';
+import { groupQueueEntries } from '../domain/matchmaking';
 import { AppError } from '../lib/errors';
 import type { AppLogger } from '../lib/logger';
 import { MatchmakingRepository } from '../repositories/matchmaking-repository';
@@ -50,26 +50,7 @@ export class MatchmakingService {
     if (this.running) return;
     this.running = true;
     try {
-      let queue = await this.repository.listQueue();
-      const incomplete = await this.repository.incompleteMatchmadeRooms();
-      for (const room of incomplete) {
-        const needed = 4 - room.participants.length;
-        if (needed <= 0) continue;
-        const selected = candidatesForSeats(
-          queue,
-          room.participants.map((participant) => participant.user.englishLevel),
-          needed,
-          now,
-          this.config.MATCHMAKING_WIDEN_AFTER_SEC,
-        );
-        if (!selected.length) continue;
-        const filled = await this.repository.fillRoom(room.id, selected, room.participants.map((item) => item.seat));
-        if (!filled) continue;
-        selected.forEach((entry) => this.publisher.user(entry.userId, 'matched', { roomId: room.id }));
-        const selectedIds = new Set(selected.map((entry) => entry.id));
-        queue = queue.filter((entry) => !selectedIds.has(entry.id));
-      }
-
+      const queue = await this.repository.listQueue();
       const { groups } = groupQueueEntries(queue, now, this.config.MATCHMAKING_WIDEN_AFTER_SEC);
       for (const group of groups) await this.createMatch(group);
     } catch (error) {
@@ -80,17 +61,24 @@ export class MatchmakingService {
   }
 
   private async createMatch(entries: Array<{ id: string; userId: string }>): Promise<void> {
-    const seats = this.shuffle([1, 2, 3, 4]);
+    const shuffled = this.shuffle(entries);
+    const pairs = [shuffled.slice(0, 2), shuffled.slice(2, 4)] as [typeof entries, typeof entries];
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
-        const roomId = await this.repository.createMatch(
-          this.generateCode(),
-          entries,
+        const firstCode = this.generateCode();
+        let secondCode = this.generateCode();
+        while (secondCode === firstCode) secondCode = this.generateCode();
+        const rooms = await this.repository.createMatch(
+          [firstCode, secondCode],
+          pairs,
           this.config.DEFAULT_ROUND_DURATION_SEC,
-          seats,
         );
-        if (!roomId) return;
-        entries.forEach((entry) => this.publisher.user(entry.userId, 'matched', { roomId }));
+        if (!rooms) return;
+        const matchId = crypto.randomUUID();
+        const split = rooms.map((room) => room.participants);
+        rooms.forEach((room, pairIndex) => room.participants.forEach((participant) => {
+          this.publisher.user(participant.userId, 'matched', { matchId, roomId: room.roomId, pairIndex, split });
+        }));
         return;
       } catch (error) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
@@ -99,7 +87,7 @@ export class MatchmakingService {
     throw new Error('Could not allocate a unique room code');
   }
 
-  private shuffle(values: number[]): number[] {
+  private shuffle<T>(values: T[]): T[] {
     const result = [...values];
     for (let index = result.length - 1; index > 0; index -= 1) {
       const swapWith = crypto.randomInt(index + 1);

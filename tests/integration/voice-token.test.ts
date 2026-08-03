@@ -3,9 +3,9 @@ import type { RoomRepository, DetailedRoom } from '../../src/repositories/room-r
 import { VoiceService, type VoiceAdminClient } from '../../src/services/voice-service';
 import { testConfig, testLogger } from '../helpers';
 
-const participant = (pair: 'A' | 'B') => ({
-  userId: `user-${pair}`, pair, leftAt: null,
-  room: { id: 'room-id', status: 'round1' },
+const participant = (userId: string) => ({
+  userId, pair: userId === 'speaker' ? 'A' : 'B', leftAt: null,
+  room: { id: 'room-id', status: 'round1', currentRound: 1, rounds: [{ roundNo: 1, speakerUserId: 'speaker' }] },
 });
 
 describe('LiveKit permissions', () => {
@@ -19,14 +19,14 @@ describe('LiveKit permissions', () => {
       admin,
     );
 
-    (repository.findParticipant as jest.Mock).mockResolvedValue(participant('A'));
-    const speaker = await service.token('room-id', 'user-A');
+    (repository.findParticipant as jest.Mock).mockResolvedValue(participant('speaker'));
+    const speaker = await service.token('room-id', 'speaker');
     expect(speaker.canPublish).toBe(true);
     expect(speaker.url).toBe('ws://localhost:7880');
     expect((jwt.decode(speaker.token) as { video: { canPublish: boolean } }).video.canPublish).toBe(true);
 
-    (repository.findParticipant as jest.Mock).mockResolvedValue(participant('B'));
-    const listener = await service.token('room-id', 'user-B');
+    (repository.findParticipant as jest.Mock).mockResolvedValue(participant('listener'));
+    const listener = await service.token('room-id', 'listener');
     expect(listener.canPublish).toBe(false);
     expect((jwt.decode(listener.token) as { video: { canPublish: boolean } }).video.canPublish).toBe(false);
   });
@@ -38,12 +38,11 @@ describe('LiveKit permissions', () => {
     const room = {
       id: 'room-id',
       participants: [
-        { userId: 'a1', pair: 'A', leftAt: null }, { userId: 'a2', pair: 'A', leftAt: null },
-        { userId: 'b1', pair: 'B', leftAt: null }, { userId: 'b2', pair: 'B', leftAt: null },
+        { userId: 'speaker', pair: 'A', leftAt: null }, { userId: 'listener', pair: 'B', leftAt: null },
       ],
     } as DetailedRoom;
-    await service.updatePermissions(room, 'B');
+    await service.updatePermissions(room, 'listener');
     const permissions = (admin.updateParticipant as jest.Mock).mock.calls.map((call) => [call[1], call[2].permission.canPublish]);
-    expect(permissions).toEqual([['a1', false], ['a2', false], ['b1', true], ['b2', true]]);
+    expect(permissions).toEqual([['speaker', false], ['listener', true]]);
   });
 });

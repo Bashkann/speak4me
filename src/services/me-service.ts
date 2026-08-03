@@ -47,7 +47,9 @@ export class MeService {
         roomId: room.id,
         date: room.finishedAt,
         durationSec: room.roundDurationSec * 2,
-        topics: [room.topicRound1?.textEn, room.topicRound2?.textEn].filter(Boolean),
+        topics: room.rounds.length
+          ? room.rounds.map((round) => round.topic?.textEn).filter(Boolean)
+          : [room.topicRound1?.textEn, room.topicRound2?.textEn].filter(Boolean),
         partners: room.participants
           .filter((participant) => participant.userId !== userId)
           .map((participant) => participant.user.displayName),

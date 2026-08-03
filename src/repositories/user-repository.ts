@@ -46,6 +46,7 @@ export class UserRepository {
         include: {
           topicRound1: true,
           topicRound2: true,
+          rounds: { include: { topic: true }, orderBy: { roundNo: 'asc' } },
           participants: { include: { user: { select: { id: true, displayName: true } } } },
         },
       }),

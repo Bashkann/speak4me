@@ -52,70 +52,103 @@ enum Pair {
 }
 
 model User {
-  id                  String             @id @default(uuid())
-  email               String             @unique
-  passwordHash        String
-  displayName         String
-  englishLevel        EnglishLevel
-  nativeLanguage      String?
-  goals               String[]           @default([])
-  interests           String[]           @default([])
-  role                UserRole            @default(USER)
-  suspendedAt         DateTime?
-  isBanned            Boolean            @default(false)
-  createdAt           DateTime           @default(now())
-  roomParticipants    RoomParticipant[]
-  queueEntry          MatchQueueEntry?
-  reportsMade         Report[]            @relation("ReportsMade")
-  reportsReceived     Report[]            @relation("ReportsReceived")
-  refreshTokens       RefreshToken[]
+  id               String            @id @default(uuid())
+  email            String            @unique
+  passwordHash     String
+  displayName      String
+  englishLevel     EnglishLevel
+  nativeLanguage   String?
+  goals            String[]          @default([])
+  interests        String[]          @default([])
+  role             UserRole          @default(USER)
+  suspendedAt      DateTime?
+  isBanned         Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  roomParticipants RoomParticipant[]
+  queueEntry       MatchQueueEntry?
+  reportsMade      Report[]          @relation("ReportsMade")
+  reportsReceived  Report[]          @relation("ReportsReceived")
+  refreshTokens    RefreshToken[]
+  roundsAsSpeaker  RoomRound[]       @relation("RoundSpeaker")
+  roundsAsListener RoomRound[]       @relation("RoundListener")
 
   @@index([role])
   @@index([suspendedAt])
 }
 
 model Topic {
-  id              String     @id @default(uuid())
-  textEn          String
-  level           TopicLevel
-  isActive        Boolean    @default(true)
-  roomsAsRound1   Room[]     @relation("Round1Topic")
-  roomsAsRound2   Room[]     @relation("Round2Topic")
+  id            String      @id @default(uuid())
+  textEn        String
+  level         TopicLevel
+  isActive      Boolean     @default(true)
+  roomsAsRound1 Room[]      @relation("Round1Topic")
+  roomsAsRound2 Room[]      @relation("Round2Topic")
+  roomRounds    RoomRound[]
 
   @@index([level, isActive])
 }
 
 model Room {
-  id                String            @id @default(uuid())
-  code              String            @unique @db.Char(6)
-  type              RoomType
-  status            RoomStatus        @default(waiting)
-  roundDurationSec  Int               @default(420)
-  currentRound      Int?
-  roundEndsAt       DateTime?
-  topicRound1Id     String?
-  topicRound2Id     String?
-  createdAt         DateTime           @default(now())
-  finishedAt        DateTime?
-  topicRound1       Topic?             @relation("Round1Topic", fields: [topicRound1Id], references: [id])
-  topicRound2       Topic?             @relation("Round2Topic", fields: [topicRound2Id], references: [id])
-  participants      RoomParticipant[]
-  reports           Report[]
+  id               String            @id @default(uuid())
+  code             String            @unique @db.Char(6)
+  type             RoomType
+  status           RoomStatus        @default(waiting)
+  roundDurationSec Int               @default(420)
+  capacity         Int               @default(2)
+  currentRound     Int?
+  roundEndsAt      DateTime?
+  topicRound1Id    String?
+  topicRound2Id    String?
+  createdAt        DateTime          @default(now())
+  finishedAt       DateTime?
+  topicRound1      Topic?            @relation("Round1Topic", fields: [topicRound1Id], references: [id])
+  topicRound2      Topic?            @relation("Round2Topic", fields: [topicRound2Id], references: [id])
+  participants     RoomParticipant[]
+  reports          Report[]
+  rounds           RoomRound[]
 
   @@index([status])
   @@index([createdAt])
 }
 
+model RoomRound {
+  id                String     @id @default(uuid())
+  roomId            String
+  roundNo           Int
+  speakerUserId     String
+  listenerUserId    String
+  topicId           String?
+  topicSwapCount    Int        @default(0)
+  topicLocked       Boolean    @default(false)
+  shownTopicIds     String[]   @default([])
+  continuedPrevious Boolean    @default(false)
+  previousRoundId   String?    @unique
+  startedAt         DateTime   @default(now())
+  endsAt            DateTime
+  endedAt           DateTime?
+  room              Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  speaker           User       @relation("RoundSpeaker", fields: [speakerUserId], references: [id], onDelete: Cascade)
+  listener          User       @relation("RoundListener", fields: [listenerUserId], references: [id], onDelete: Cascade)
+  topic             Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  previousRound     RoomRound? @relation("RoundSequence", fields: [previousRoundId], references: [id], onDelete: SetNull)
+  nextRound         RoomRound? @relation("RoundSequence")
+
+  @@unique([roomId, roundNo])
+  @@index([roomId, endedAt])
+  @@index([speakerUserId])
+  @@index([listenerUserId])
+}
+
 model RoomParticipant {
-  id          String    @id @default(uuid())
-  roomId      String
-  userId      String
-  seat        Int
-  pair        Pair
-  joinedAt    DateTime  @default(now())
-  leftAt      DateTime?
-  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String    @id @default(uuid())
+  roomId   String
+  userId   String
+  seat     Int
+  pair     Pair
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  room     Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, userId])
   @@unique([roomId, seat])
@@ -123,26 +156,26 @@ model RoomParticipant {
 }
 
 model MatchQueueEntry {
-  id            String       @id @default(uuid())
-  userId        String       @unique
-  englishLevel  EnglishLevel
-  enqueuedAt    DateTime     @default(now())
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String       @id @default(uuid())
+  userId       String       @unique
+  englishLevel EnglishLevel
+  enqueuedAt   DateTime     @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([enqueuedAt])
 }
 
 model Report {
-  id              String    @id @default(uuid())
-  reporterId      String
-  reportedUserId  String
-  roomId          String
-  reason          String
-  createdAt       DateTime  @default(now())
-  resolvedAt      DateTime?
-  reporter        User      @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
-  reportedUser    User      @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
-  room            Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid())
+  reporterId     String
+  reportedUserId String
+  roomId         String
+  reason         String
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+  reporter       User      @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser   User      @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  room           Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([reportedUserId, createdAt])
   @@index([roomId])
@@ -150,12 +183,12 @@ model Report {
 }
 
 model RefreshToken {
-  id          String    @id @default(uuid())
-  userId      String
-  tokenHash   String    @unique
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
 }

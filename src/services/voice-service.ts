@@ -1,5 +1,4 @@
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
-import type { Pair } from '@prisma/client';
 import type { AppConfig } from '../config';
 import { AppError } from '../lib/errors';
 import type { AppLogger } from '../lib/logger';
@@ -36,9 +35,8 @@ export class VoiceService {
     if (!participant || participant.leftAt || ['finished', 'aborted'].includes(participant.room.status)) {
       throw new AppError(403, 'NOT_A_PARTICIPANT', 'An active room participant is required');
     }
-    const canPublish =
-      (participant.room.status === 'round1' && participant.pair === 'A') ||
-      (participant.room.status === 'round2' && participant.pair === 'B');
+    const activeRound = participant.room.rounds.find((round) => round.roundNo === participant.room.currentRound);
+    const canPublish = activeRound?.speakerUserId === userId;
     const accessToken = new AccessToken(this.config.LIVEKIT_API_KEY, this.config.LIVEKIT_API_SECRET, {
       identity: userId,
       ttl: '15m',
@@ -56,11 +54,11 @@ export class VoiceService {
     };
   }
 
-  async updatePermissions(room: DetailedRoom, speakingPair: Pair | null): Promise<void> {
+  async updatePermissions(room: DetailedRoom, speakerUserId: string | null): Promise<void> {
     await Promise.all(room.participants.filter((participant) => !participant.leftAt).map(async (participant) => {
       try {
         await this.admin.updateParticipant(this.roomName(room.id), participant.userId, {
-          permission: { canSubscribe: true, canPublish: participant.pair === speakingPair },
+          permission: { canSubscribe: true, canPublish: participant.userId === speakerUserId },
         });
       } catch (error) {
         // A token can be issued before the participant joins LiveKit; absence is expected.

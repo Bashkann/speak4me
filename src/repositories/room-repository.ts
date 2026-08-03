@@ -7,6 +7,13 @@ const roomInclude = {
   },
   topicRound1: true,
   topicRound2: true,
+  rounds: {
+    include: {
+      topic: true,
+      previousRound: { include: { topic: true } },
+    },
+    orderBy: { roundNo: 'asc' as const },
+  },
 } satisfies Prisma.RoomInclude;
 
 export type DetailedRoom = Prisma.RoomGetPayload<{ include: typeof roomInclude }>;
@@ -42,10 +49,10 @@ export class RoomRepository {
       if (ownMembership) return ['finished', 'aborted'].includes(room.status) ? 'unavailable' : room;
       if (room.type !== 'private' || room.status !== 'waiting') return 'unavailable';
       const occupied = new Set(room.participants.filter((item) => !item.leftAt).map((item) => item.seat));
-      const seat = [1, 2, 3, 4].find((candidate) => !occupied.has(candidate));
+      const seat = [1, 2].find((candidate) => !occupied.has(candidate));
       if (!seat) return 'full';
       await tx.roomParticipant.create({
-        data: { roomId: room.id, userId, seat, pair: seat <= 2 ? 'A' : 'B' },
+        data: { roomId: room.id, userId, seat, pair: seat === 1 ? 'A' : 'B' },
       });
       return tx.room.findUniqueOrThrow({ where: { id: room.id }, include: roomInclude });
     }, { isolationLevel: 'Serializable' });
@@ -58,7 +65,13 @@ export class RoomRepository {
   findParticipant(roomId: string, userId: string) {
     return this.db.roomParticipant.findUnique({
       where: { roomId_userId: { roomId, userId } },
-      include: { room: true },
+      include: {
+        room: {
+          include: {
+            rounds: { include: { topic: true }, orderBy: { roundNo: 'asc' } },
+          },
+        },
+      },
     });
   }
 
@@ -106,6 +119,74 @@ export class RoomRepository {
     return this.db.room.updateMany({ where: { id: roomId, status: expectedStatus }, data });
   }
 
+  async startRound(
+    roomId: string,
+    expectedStatus: RoomStatus,
+    input: {
+      roundNo: 1 | 2;
+      speakerUserId: string;
+      listenerUserId: string;
+      topicId: string;
+      previousRoundId?: string;
+      endsAt: Date;
+    },
+  ): Promise<DetailedRoom | null> {
+    return this.db.$transaction(async (tx) => {
+      const updated = await tx.room.updateMany({
+        where: { id: roomId, status: expectedStatus },
+        data: {
+          status: input.roundNo === 1 ? 'round1' : 'round2',
+          currentRound: input.roundNo,
+          roundEndsAt: input.endsAt,
+        },
+      });
+      if (!updated.count) return null;
+      await tx.roomRound.create({
+        data: {
+          roomId,
+          roundNo: input.roundNo,
+          speakerUserId: input.speakerUserId,
+          listenerUserId: input.listenerUserId,
+          topicId: input.topicId,
+          shownTopicIds: [input.topicId],
+          previousRoundId: input.previousRoundId,
+          endsAt: input.endsAt,
+        },
+      });
+      return tx.room.findUnique({ where: { id: roomId }, include: roomInclude });
+    });
+  }
+
+  async startBreak(roomId: string, endsAt: Date): Promise<DetailedRoom | null> {
+    return this.db.$transaction(async (tx) => {
+      const updated = await tx.room.updateMany({
+        where: { id: roomId, status: 'round1' },
+        data: { status: 'break', currentRound: null, roundEndsAt: endsAt },
+      });
+      if (!updated.count) return null;
+      await tx.roomRound.updateMany({
+        where: { roomId, roundNo: 1, endedAt: null },
+        data: { endedAt: new Date() },
+      });
+      return tx.room.findUnique({ where: { id: roomId }, include: roomInclude });
+    });
+  }
+
+  async finish(roomId: string, finishedAt: Date): Promise<DetailedRoom | null> {
+    return this.db.$transaction(async (tx) => {
+      const updated = await tx.room.updateMany({
+        where: { id: roomId, status: 'round2' },
+        data: { status: 'finished', currentRound: null, roundEndsAt: null, finishedAt },
+      });
+      if (!updated.count) return null;
+      await tx.roomRound.updateMany({
+        where: { roomId, roundNo: 2, endedAt: null },
+        data: { endedAt: finishedAt },
+      });
+      return tx.room.findUnique({ where: { id: roomId }, include: roomInclude });
+    });
+  }
+
   async randomTopic(levels: EnglishLevel[], excludeId?: string) {
     const allowed = [...new Set([...levels, 'ALL' as const])];
     const where: Prisma.TopicWhereInput = {
@@ -141,6 +222,7 @@ export class RoomRepository {
         where: { id: roomId },
         data: { status: 'aborted', currentRound: null, roundEndsAt: null, finishedAt: new Date() },
       });
+      await tx.roomRound.updateMany({ where: { roomId, endedAt: null }, data: { endedAt: new Date() } });
       return room;
     });
   }

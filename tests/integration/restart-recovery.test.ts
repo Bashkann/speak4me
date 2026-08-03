@@ -12,12 +12,19 @@ describe('restart recovery', () => {
   it('reschedules a persisted round deadline and gives users reconnect grace', async () => {
     const room = {
       id: '00000000-0000-4000-8000-000000000900', code: 'REC123', type: 'private', status: 'round1',
-      roundDurationSec: 420, currentRound: 1, roundEndsAt: new Date(Date.now() + 1_000),
+      roundDurationSec: 420, capacity: 2, currentRound: 1, roundEndsAt: new Date(Date.now() + 1_000),
       topicRound1Id: 'topic-1', topicRound2Id: null, createdAt: new Date(), finishedAt: null,
       topicRound1: { id: 'topic-1', textEn: 'Recovery topic', level: 'ALL', isActive: true }, topicRound2: null,
-      participants: [1, 2, 3, 4].map((seat) => ({
+      rounds: [{
+        id: 'round-1', roomId: '00000000-0000-4000-8000-000000000900', roundNo: 1,
+        speakerUserId: 'u-1', listenerUserId: 'u-2', topicId: 'topic-1', topicSwapCount: 0,
+        topicLocked: false, shownTopicIds: ['topic-1'], continuedPrevious: false, previousRoundId: null,
+        startedAt: new Date(), endsAt: new Date(Date.now() + 1_000), endedAt: null,
+        topic: { id: 'topic-1', textEn: 'Recovery topic', level: 'ALL', isActive: true }, previousRound: null,
+      }],
+      participants: [1, 2].map((seat) => ({
         id: `p-${seat}`, roomId: '00000000-0000-4000-8000-000000000900', userId: `u-${seat}`,
-        seat, pair: seat <= 2 ? 'A' : 'B', joinedAt: new Date(), leftAt: null,
+        seat, pair: seat === 1 ? 'A' : 'B', joinedAt: new Date(), leftAt: null,
         user: { id: `u-${seat}`, displayName: `User ${seat}`, englishLevel: 'B1' },
       })),
     } as DetailedRoom;
@@ -25,13 +32,12 @@ describe('restart recovery', () => {
       recoverableRooms: jest.fn().mockResolvedValue([room]),
       markAllParticipantsDisconnected: jest.fn(async (_id: string, leftAt: Date) => {
         room.participants.forEach((participant) => { participant.leftAt = leftAt; });
-        return { count: 4 };
+        return { count: 2 };
       }),
       findDetailed: jest.fn().mockResolvedValue(room),
-      updateState: jest.fn(async (_id: string, expected: string, data: Record<string, unknown>) => {
-        if (room.status !== expected) return { count: 0 };
-        Object.assign(room, data);
-        return { count: 1 };
+      startBreak: jest.fn(async (_id: string, endsAt: Date) => {
+        Object.assign(room, { status: 'break', currentRound: null, roundEndsAt: endsAt });
+        return room;
       }),
     } as unknown as RoomRepository;
     const voice = { updatePermissions: jest.fn().mockResolvedValue(undefined), closeRoom: jest.fn() } as unknown as VoiceService;

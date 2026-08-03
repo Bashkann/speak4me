@@ -35,7 +35,7 @@ export class RoomService {
     const result = await this.rooms.joinPrivate(code, userId);
     if (result === 'not_found') throw new AppError(404, 'ROOM_NOT_FOUND', 'Room code was not found');
     if (result === 'unavailable') throw new AppError(409, 'ROOM_UNAVAILABLE', 'Room can no longer be joined');
-    if (result === 'full') throw new AppError(409, 'ROOM_FULL', 'Room already has four participants');
+    if (result === 'full') throw new AppError(409, 'ROOM_FULL', 'Room already has two participants');
     if (result === 'active_room') throw new AppError(409, 'ACTIVE_ROOM_EXISTS', 'Leave your active room before joining');
     return this.snapshot(result);
   }
@@ -56,21 +56,25 @@ export class RoomService {
   }
 
   snapshot(room: DetailedRoom) {
-    const currentTopic =
-      room.status === 'round1'
-        ? room.topicRound1?.textEn ?? null
-        : room.status === 'round2'
-          ? room.topicRound2?.textEn ?? null
-          : null;
+    const activeRound = room.rounds.find((item) => item.roundNo === room.currentRound);
+    const currentTopic = activeRound?.topic?.textEn ?? null;
     return {
       id: room.id,
       code: room.code.trim(),
       type: room.type,
       status: room.status,
       roundDurationSec: room.roundDurationSec,
+      capacity: room.capacity,
       currentRound: room.currentRound,
       roundEndsAt: room.roundEndsAt,
       currentTopic,
+      activeRound: activeRound ? {
+        roundNo: activeRound.roundNo,
+        speakerUserId: activeRound.speakerUserId,
+        listenerUserId: activeRound.listenerUserId,
+        topic: activeRound.topic ? { id: activeRound.topic.id, textEn: activeRound.topic.textEn } : null,
+        endsAt: activeRound.endsAt,
+      } : null,
       participants: room.participants
         .filter((participant) => !participant.leftAt || ['finished', 'aborted'].includes(room.status))
         .map((participant) => ({

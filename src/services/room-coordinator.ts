@@ -1,4 +1,4 @@
-import type { EnglishLevel, Pair } from '@prisma/client';
+import type { EnglishLevel } from '@prisma/client';
 import type { AppConfig } from '../config';
 import { disconnectAction } from '../domain/disconnect';
 import { AppError } from '../lib/errors';
@@ -80,6 +80,12 @@ export class RoomCoordinator {
     if (action === 'ignore') return;
 
     if (action === 'free_seat') {
+      const room = await this.repository.findDetailed(roomId);
+      if (room?.type === 'matchmade') {
+        await this.repository.markParticipantLeft(roomId, userId, new Date());
+        await this.abort(roomId, 'participant_left_before_start');
+        return;
+      }
       await this.repository.deleteWaitingParticipant(roomId, userId);
       this.clearStateTimers(roomId);
       this.publisher.room(roomId, 'participant_left', { userId });
@@ -98,7 +104,7 @@ export class RoomCoordinator {
     const room = await this.repository.findDetailed(roomId);
     if (!room || room.status !== 'waiting') return;
     const activeParticipants = room.participants.filter((participant) => !participant.leftAt);
-    if (activeParticipants.length !== 4 || !activeParticipants.every((item) => this.isPresent(roomId, item.userId))) return;
+    if (activeParticipants.length !== room.capacity || room.capacity !== 2 || !activeParticipants.every((item) => this.isPresent(roomId, item.userId))) return;
 
     const endsAt = new Date(Date.now() + this.config.READY_COUNTDOWN_SEC * 1000);
     const updated = await this.repository.updateState(roomId, 'waiting', {
@@ -145,71 +151,81 @@ export class RoomCoordinator {
     this.clearStateTimers(roomId);
     const room = await this.repository.findDetailed(roomId);
     if (!room) return;
-    if (room.status === 'ready') await this.startRound(room, 1, 'A');
+    if (room.status === 'ready') await this.startRound(room, 1);
     else if (room.status === 'round1') await this.startBreak(room);
-    else if (room.status === 'break') await this.startRound(room, 2, 'B');
+    else if (room.status === 'break') await this.startRound(room, 2);
     else if (room.status === 'round2') await this.finish(room);
   }
 
-  private async startRound(room: DetailedRoom, round: 1 | 2, speakingPair: Pair): Promise<void> {
+  private async startRound(room: DetailedRoom, round: 1 | 2): Promise<void> {
     const expected = round === 1 ? 'ready' : 'break';
-    const levels = room.participants.map((participant) => participant.user.englishLevel);
-    const topic = await this.repository.randomTopic(levels, round === 2 ? room.topicRound1Id ?? undefined : undefined);
+    const participants = room.participants.filter((participant) => !participant.leftAt);
+    const previousRound = room.rounds.find((item) => item.roundNo === 1);
+    const speaker = round === 1 ? participants[0] : participants.find((item) => item.userId === previousRound?.listenerUserId);
+    const listener = round === 1 ? participants[1] : participants.find((item) => item.userId === previousRound?.speakerUserId);
+    if (!speaker || !listener) {
+      await this.abort(room.id, 'invalid_room_participants');
+      return;
+    }
+    const levels = participants.map((participant) => participant.user.englishLevel);
+    const topic = await this.repository.randomTopic(levels, round === 2 ? previousRound?.topicId ?? undefined : undefined);
     if (!topic) {
       await this.abort(room.id, 'no_active_topics');
       return;
     }
     const endsAt = new Date(Date.now() + room.roundDurationSec * 1000);
-    const updated = await this.repository.updateState(room.id, expected, {
-      status: round === 1 ? 'round1' : 'round2',
-      currentRound: round,
-      roundEndsAt: endsAt,
-      ...(round === 1 ? { topicRound1Id: topic.id } : { topicRound2Id: topic.id }),
+    const current = await this.repository.startRound(room.id, expected, {
+      roundNo: round,
+      speakerUserId: speaker.userId,
+      listenerUserId: listener.userId,
+      topicId: topic.id,
+      previousRoundId: round === 2 ? previousRound?.id : undefined,
+      endsAt,
     });
-    if (!updated.count) return;
-    const current = await this.repository.findDetailed(room.id);
     if (!current) return;
-    await this.voice.updatePermissions(current, speakingPair);
+    await this.voice.updatePermissions(current, speaker.userId);
     this.publisher.room(room.id, 'round_started', {
-      round,
-      speakingPair,
-      topicText: topic.textEn,
+      roundNo: round,
+      speakerUserId: speaker.userId,
+      listenerUserId: listener.userId,
+      topic: { id: topic.id, textEn: topic.textEn },
       endsAt,
     });
     this.scheduleStateTimer(current);
   }
 
   private async startBreak(room: DetailedRoom): Promise<void> {
+    const completedRound = room.rounds.find((item) => item.roundNo === 1);
+    if (!completedRound) {
+      await this.abort(room.id, 'missing_round_state');
+      return;
+    }
     const endsAt = new Date(Date.now() + this.config.ROUND_BREAK_SEC * 1000);
-    const updated = await this.repository.updateState(room.id, 'round1', {
-      status: 'break',
-      currentRound: null,
-      roundEndsAt: endsAt,
-    });
-    if (!updated.count) return;
-    const current = await this.repository.findDetailed(room.id);
+    const current = await this.repository.startBreak(room.id, endsAt);
     if (!current) return;
     await this.voice.updatePermissions(current, null);
+    this.publisher.room(room.id, 'round_ended', { roundNo: 1 });
+    this.publisher.room(room.id, 'role_swap', {
+      nextSpeakerUserId: completedRound.listenerUserId,
+      nextListenerUserId: completedRound.speakerUserId,
+    });
     this.publisher.room(room.id, 'round_break', { endsAt });
     this.scheduleStateTimer(current);
   }
 
   private async finish(room: DetailedRoom): Promise<void> {
     const finishedAt = new Date();
-    const updated = await this.repository.updateState(room.id, 'round2', {
-      status: 'finished',
-      currentRound: null,
-      roundEndsAt: null,
-      finishedAt,
-    });
-    if (!updated.count) return;
-    const current = await this.repository.findDetailed(room.id);
+    const current = await this.repository.finish(room.id, finishedAt);
+    if (!current) return;
+    this.publisher.room(room.id, 'round_ended', { roundNo: 2 });
     this.publisher.room(room.id, 'session_finished', {
       roomId: room.id,
-      rounds: [
-        { round: 1, speakingPair: 'A', topicText: current?.topicRound1?.textEn },
-        { round: 2, speakingPair: 'B', topicText: current?.topicRound2?.textEn },
-      ],
+      rounds: current.rounds.map((item) => ({
+        roundNo: item.roundNo,
+        speakerUserId: item.speakerUserId,
+        listenerUserId: item.listenerUserId,
+        topicText: item.topic?.textEn,
+      })),
     });
     await this.voice.closeRoom(room.id);
     this.clearRoom(room.id);
