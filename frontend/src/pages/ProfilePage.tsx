@@ -10,6 +10,7 @@ import { useToastStore } from '../store/toast-store';
 import { ThemeToggle } from '../components/ThemeToggle';
 import type { EnglishLevel } from '../types/api';
 import { PanelSkeleton, Skeleton } from '../components/LoadingSkeleton';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 const goalOptions = ['exam-prep', 'travel', 'work-business', 'moving-abroad', 'just-for-fun'];
 const interestOptions = ['technology', 'travel', 'movies & series', 'sports', 'business', 'daily life', 'science', 'culture', 'music', 'food'];
@@ -97,7 +98,7 @@ export function ProfilePage() {
   );
 }
 
-function StatCard({ label, value, delay }: { label: string; value: string | number; delay: number }) { return <motion.article initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }} className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm sm:p-5"><p className="font-display text-xl font-extrabold text-ink sm:text-3xl">{value}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">{label}</p></motion.article>; }
+function StatCard({ label, value, delay }: { label: string; value: string | number; delay: number }) { return <motion.article initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }} className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm sm:p-5"><p className="font-display text-xl font-extrabold tabular-nums text-ink sm:text-3xl">{typeof value === 'number' ? <AnimatedNumber value={value} /> : value}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">{label}</p></motion.article>; }
 function Field({ label, children }: React.PropsWithChildren<{ label: string }>) { return <label className="block"><span className="label">{label}</span>{children}</label>; }
 function ChoiceEditor({ label, options, selected, onToggle }: { label: string; options: string[]; selected: string[]; onToggle: (value: string) => void }) { return <div><p className="label">{label}</p><div className="flex flex-wrap gap-2">{options.map((option) => <button key={option} type="button" aria-pressed={selected.includes(option)} onClick={() => onToggle(option)} className={`rounded-full border px-3 py-2 text-xs font-bold capitalize ${selected.includes(option) ? 'border-brand-500 bg-brand-600 text-white' : 'border-slate-200 text-slate-600'}`}>{labelize(option)}</button>)}</div></div>; }
 function ProfileRow({ label, value }: { label: string; value: string }) { return <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-2 font-semibold text-ink">{value}</p></div>; }

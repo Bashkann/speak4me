@@ -20,6 +20,7 @@ import { getApiErrorMessage } from '../lib/api-error';
 import { useToastStore } from '../store/toast-store';
 import { EmptyState } from '../components/EmptyState';
 import { PanelSkeleton, Skeleton } from '../components/LoadingSkeleton';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 type AdminTab = 'overview' | 'users' | 'rooms' | 'reports' | 'topics';
 const tabs: Array<[AdminTab, string]> = [['overview', 'Overview'], ['users', 'Users'], ['rooms', 'Rooms'], ['reports', 'Reports'], ['topics', 'Topics']];
@@ -42,7 +43,7 @@ function Overview() {
   if (query.isError) return <ErrorPanel error={query.error} />;
   if (query.isLoading) return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Loading admin statistics">{[1, 2, 3, 4].map((item) => <div key={item} className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6"><Skeleton className="h-10 w-20" /><Skeleton className="mt-3 h-3 w-28" /></div>)}</div>;
   const cards = [['Total users', query.data?.users ?? 0], ['Active rooms', query.data?.activeRooms ?? 0], ['Sessions today', query.data?.sessionsToday ?? 0], ['Queue length', query.data?.queueLength ?? 0]] as const;
-  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{cards.map(([label, value], index) => <motion.article key={label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><motion.p key={value} initial={{ opacity: 0.4, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="font-display text-3xl font-extrabold text-ink sm:text-4xl">{value}</motion.p><p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p></motion.article>)}</div>;
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{cards.map(([label, value], index) => <motion.article key={label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><p className="font-display text-3xl font-extrabold tabular-nums text-ink sm:text-4xl"><AnimatedNumber value={value} /></p><p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p></motion.article>)}</div>;
 }
 
 function Users() {

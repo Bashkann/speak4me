@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { motion, useReducedMotion } from 'framer-motion';
 import { NavLink, Outlet } from 'react-router-dom';
 import { logout } from '../api/auth';
 import { useAuthStore } from '../store/auth-store';
@@ -55,11 +56,13 @@ export function AppShell() {
 }
 
 function MobileNavItem({ to, label, icon }: { to: string; label: string; icon: string }) {
-  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex min-h-12 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition ${isActive ? 'bg-brand-50 text-brand-800' : 'text-slate-500'}`}><span className="text-lg leading-none" aria-hidden="true">{icon}</span><span className="mt-1">{label}</span></NavLink>;
+  const reducedMotion = useReducedMotion();
+  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `relative flex min-h-12 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${isActive ? 'text-brand-800' : 'text-slate-500'}`}>{({ isActive }) => <>{isActive && <motion.span layoutId="mobile-nav-indicator" className="absolute inset-0 rounded-xl bg-brand-50" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }} />}<motion.span animate={{ scale: isActive && !reducedMotion ? 1.14 : 1, y: isActive && !reducedMotion ? -1 : 0 }} className="relative text-lg leading-none" aria-hidden="true">{icon}</motion.span><span className="relative mt-1">{label}</span></>}</NavLink>;
 }
 
 function NavItem({ to, label }: { to: string; label: string }) {
-  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `rounded-lg px-4 py-2 text-sm font-bold transition ${isActive ? 'bg-brand-50 text-brand-800' : 'text-slate-500 hover:text-ink'}`}>{label}</NavLink>;
+  const reducedMotion = useReducedMotion();
+  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `relative rounded-lg px-4 py-2 text-sm font-bold transition-colors ${isActive ? 'text-brand-800' : 'text-slate-500 hover:text-ink'}`}>{({ isActive }) => <>{isActive && <motion.span layoutId="desktop-nav-indicator" className="absolute inset-0 rounded-lg bg-brand-50" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }} />}<span className="relative">{label}</span></>}</NavLink>;
 }
 
 function getInitials(name: string): string {
