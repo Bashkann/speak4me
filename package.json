@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:topics": "node dist/prisma/seed.js --topics-only",
     "db:seed:production": "node dist/prisma/seed.js --production",
     "test": "jest --runInBand",
     "test:unit": "jest --runInBand tests/unit",
