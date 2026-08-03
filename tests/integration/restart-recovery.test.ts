@@ -25,7 +25,7 @@ describe('restart recovery', () => {
       participants: [1, 2].map((seat) => ({
         id: `p-${seat}`, roomId: '00000000-0000-4000-8000-000000000900', userId: `u-${seat}`,
         seat, pair: seat === 1 ? 'A' : 'B', joinedAt: new Date(), leftAt: null,
-        user: { id: `u-${seat}`, displayName: `User ${seat}`, englishLevel: 'B1' },
+        user: { id: `u-${seat}`, handle: `user_${seat}`, displayName: `User ${seat}`, englishLevel: 'B1' },
       })),
     } as DetailedRoom;
     const repository = {

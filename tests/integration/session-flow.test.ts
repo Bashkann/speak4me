@@ -22,7 +22,7 @@ function makeRoom(): DetailedRoom {
       id: `participant-${seat}`, roomId,
       userId: `00000000-0000-4000-8000-${String(seat).padStart(12, '0')}`, seat, pair: seat === 1 ? 'A' : 'B',
       joinedAt: new Date(), leftAt: null,
-      user: { id: `00000000-0000-4000-8000-${String(seat).padStart(12, '0')}`, displayName: `User ${seat}`, englishLevel: 'B1' },
+      user: { id: `00000000-0000-4000-8000-${String(seat).padStart(12, '0')}`, handle: `user_${seat}`, displayName: `User ${seat}`, englishLevel: 'B1' },
     })),
   } as DetailedRoom;
 }

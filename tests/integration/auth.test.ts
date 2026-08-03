@@ -18,6 +18,7 @@ class MemoryUsers {
     this.lastCreateData = data;
     const user: User = {
       id: `00000000-0000-4000-8000-${String(this.values.length + 1).padStart(12, '0')}`,
+      handle: `speaker_${this.values.length + 1}`,
       ...data,
       nativeLanguage: data.nativeLanguage ?? null,
       goals: data.goals ?? [],
@@ -69,6 +70,7 @@ describe('auth HTTP flow', () => {
       email: 'SPEAKER@example.com', password: 'GoodPassword123!', displayName: 'Speaker', englishLevel: 'B1',
     }).expect(201);
     expect(registration.body.user.email).toBe('speaker@example.com');
+    expect(registration.body.user.handle).toEqual(expect.any(String));
     expect(registration.body.accessToken).toEqual(expect.any(String));
     expect(users.lastCreateData).not.toHaveProperty('password');
     expect(users.lastCreateData).toHaveProperty('passwordHash');

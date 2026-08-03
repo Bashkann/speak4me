@@ -5,7 +5,7 @@ import { AuthRepository } from '../repositories/auth-repository';
 import { UserRepository } from '../repositories/user-repository';
 import { TokenService } from './token-service';
 
-type PublicUser = Pick<User, 'id' | 'email' | 'displayName' | 'englishLevel' | 'nativeLanguage' | 'goals' | 'interests' | 'role' | 'createdAt'>;
+type PublicUser = Pick<User, 'id' | 'email' | 'handle' | 'displayName' | 'englishLevel' | 'nativeLanguage' | 'goals' | 'interests' | 'role' | 'createdAt'>;
 
 export class AuthService {
   constructor(
@@ -64,7 +64,7 @@ export class AuthService {
   }
 
   private publicUser(user: User): PublicUser {
-    const { id, email, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt } = user;
-    return { id, email, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt };
+    const { id, email, handle, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt } = user;
+    return { id, email, handle, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt };
   }
 }

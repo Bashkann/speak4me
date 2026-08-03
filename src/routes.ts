@@ -9,6 +9,7 @@ import type { MeController } from './controllers/me-controller';
 import type { ReportController } from './controllers/report-controller';
 import type { RoomController } from './controllers/room-controller';
 import type { TopicController } from './controllers/topic-controller';
+import type { SocialController } from './controllers/social-controller';
 import { requireAdmin } from './middleware/admin';
 
 export interface Controllers {
@@ -19,6 +20,7 @@ export interface Controllers {
   matchmaking: MatchmakingController;
   rooms: RoomController;
   reports: ReportController;
+  social: SocialController;
 }
 
 export function createApiRouter(controllers: Controllers, authenticate: RequestHandler): Router {
@@ -52,6 +54,15 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.get('/rooms/:id', asyncHandler(controllers.rooms.get));
   api.post('/rooms/:id/voice-token', asyncHandler(controllers.rooms.voiceToken));
   api.post('/reports', asyncHandler(controllers.reports.create));
+  api.get('/friends', asyncHandler(controllers.social.friends));
+  api.get('/friends/requests', asyncHandler(controllers.social.requests));
+  api.post('/friends/request', asyncHandler(controllers.social.request));
+  api.post('/friends/requests/:id/accept', asyncHandler(controllers.social.accept));
+  api.post('/friends/requests/:id/decline', asyncHandler(controllers.social.decline));
+  api.delete('/friends/:userId', asyncHandler(controllers.social.remove));
+  api.post('/friends/block', asyncHandler(controllers.social.block));
+  api.post('/friends/unblock', asyncHandler(controllers.social.unblock));
+  api.get('/users/search', asyncHandler(controllers.social.search));
 
   api.use('/admin', requireAdmin);
   api.get('/admin/stats', asyncHandler(controllers.admin.stats));

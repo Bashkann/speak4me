@@ -51,9 +51,16 @@ enum Pair {
   B
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
 model User {
   id               String            @id @default(uuid())
   email            String            @unique
+  handle           String            @unique @db.VarChar(32)
   passwordHash     String
   displayName      String
   englishLevel     EnglishLevel
@@ -71,9 +78,26 @@ model User {
   refreshTokens    RefreshToken[]
   roundsAsSpeaker  RoomRound[]       @relation("RoundSpeaker")
   roundsAsListener RoomRound[]       @relation("RoundListener")
+  friendshipsSent  Friendship[]      @relation("FriendshipRequester")
+  friendshipsReceived Friendship[]   @relation("FriendshipAddressee")
 
   @@index([role])
   @@index([suspendedAt])
+}
+
+model Friendship {
+  id          String           @id @default(uuid())
+  requesterId String
+  addresseeId String
+  pairKey     String           @unique
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
 }
 
 model Topic {

@@ -87,6 +87,7 @@ export class RoomService {
         .filter((participant) => !participant.leftAt || ['finished', 'aborted'].includes(room.status))
         .map((participant) => ({
           userId: participant.userId,
+          handle: participant.user.handle,
           displayName: participant.user.displayName,
           englishLevel: participant.user.englishLevel,
           seat: participant.seat,

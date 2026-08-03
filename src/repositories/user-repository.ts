@@ -1,4 +1,5 @@
-import type { EnglishLevel, Prisma, PrismaClient, User } from '@prisma/client';
+import { Prisma, type EnglishLevel, type PrismaClient, type User } from '@prisma/client';
+import { createHandle } from '../domain/social';
 
 export class UserRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -11,8 +12,17 @@ export class UserRepository {
     return this.db.user.findUnique({ where: { email } });
   }
 
-  create(data: Pick<User, 'email' | 'passwordHash' | 'displayName' | 'englishLevel'> & Partial<Pick<User, 'nativeLanguage' | 'goals' | 'interests'>>): Promise<User> {
-    return this.db.user.create({ data });
+  async create(data: Pick<User, 'email' | 'passwordHash' | 'displayName' | 'englishLevel'> & Partial<Pick<User, 'nativeLanguage' | 'goals' | 'interests'>>): Promise<User> {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        return await this.db.user.create({ data: { ...data, handle: createHandle(data.displayName) } });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+        const fields = Array.isArray(error.meta?.target) ? error.meta.target : [];
+        if (!fields.includes('handle')) throw error;
+      }
+    }
+    throw new Error('Could not allocate a unique public handle');
   }
 
   updateProfile(id: string, data: { displayName?: string; englishLevel?: EnglishLevel; nativeLanguage?: string | null; goals?: string[]; interests?: string[] }): Promise<User> {
@@ -47,7 +57,7 @@ export class UserRepository {
           topicRound1: true,
           topicRound2: true,
           rounds: { include: { topic: true }, orderBy: { roundNo: 'asc' } },
-          participants: { include: { user: { select: { id: true, displayName: true } } } },
+          participants: { include: { user: { select: { id: true, handle: true, displayName: true } } } },
         },
       }),
       this.db.room.count({ where }),

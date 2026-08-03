@@ -21,8 +21,8 @@ function roomWithRound(input: { roundNo: 1 | 2; swapCount?: number }): DetailedR
     roundDurationSec: 420, currentRound: roundNo, roundEndsAt: new Date(), topicRound1Id: null, topicRound2Id: null,
     createdAt: new Date(), finishedAt: null, topicRound1: null, topicRound2: null,
     participants: [
-      { id: 'p1', roomId: 'room-1', userId: 'speaker', seat: 1, pair: 'A', joinedAt: new Date(), leftAt: null, user: { id: 'speaker', displayName: 'Speaker', englishLevel: 'B1' } },
-      { id: 'p2', roomId: 'room-1', userId: 'listener', seat: 2, pair: 'B', joinedAt: new Date(), leftAt: null, user: { id: 'listener', displayName: 'Listener', englishLevel: 'B1' } },
+      { id: 'p1', roomId: 'room-1', userId: 'speaker', seat: 1, pair: 'A', joinedAt: new Date(), leftAt: null, user: { id: 'speaker', handle: 'speaker', displayName: 'Speaker', englishLevel: 'B1' } },
+      { id: 'p2', roomId: 'room-1', userId: 'listener', seat: 2, pair: 'B', joinedAt: new Date(), leftAt: null, user: { id: 'listener', handle: 'listener', displayName: 'Listener', englishLevel: 'B1' } },
     ],
     rounds: [{
       id: `round-${roundNo}`, roomId: 'room-1', roundNo, speakerUserId: 'speaker', listenerUserId: 'listener',

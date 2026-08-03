@@ -12,6 +12,7 @@ import { MatchmakingController } from './controllers/matchmaking-controller';
 import { MeController } from './controllers/me-controller';
 import { ReportController } from './controllers/report-controller';
 import { RoomController } from './controllers/room-controller';
+import { SocialController } from './controllers/social-controller';
 import { TopicController } from './controllers/topic-controller';
 import { errorHandler, notFoundHandler } from './lib/errors';
 import type { AppLogger } from './lib/logger';
@@ -22,6 +23,7 @@ import { AdminRepository } from './repositories/admin-repository';
 import { MatchmakingRepository } from './repositories/matchmaking-repository';
 import { ReportRepository } from './repositories/report-repository';
 import { RoomRepository } from './repositories/room-repository';
+import { SocialRepository } from './repositories/social-repository';
 import { TopicRepository } from './repositories/topic-repository';
 import { UserRepository } from './repositories/user-repository';
 import { RealtimePublisher } from './realtime/publisher';
@@ -32,6 +34,7 @@ import { MatchmakingService } from './services/matchmaking-service';
 import { MeService } from './services/me-service';
 import { RoomCoordinator } from './services/room-coordinator';
 import { RoomService } from './services/room-service';
+import { SocialService } from './services/social-service';
 import { TokenService } from './services/token-service';
 import { VoiceService } from './services/voice-service';
 
@@ -42,12 +45,14 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const topics = new TopicRepository(db);
   const reports = new ReportRepository(db);
   const roomRepository = new RoomRepository(db);
+  const socialRepository = new SocialRepository(db);
   const matchmakingRepository = new MatchmakingRepository(db);
   const publisher = new RealtimePublisher();
   const tokenService = new TokenService(config);
   const authService = new AuthService(users, authRepository, tokenService);
   const meService = new MeService(users);
   const roomService = new RoomService(roomRepository, config);
+  const socialService = new SocialService(socialRepository);
   const voiceService = new VoiceService(roomRepository, config, logger);
   const matchmakingService = new MatchmakingService(matchmakingRepository, publisher, config, logger);
   const coordinator = new RoomCoordinator(roomRepository, roomService, voiceService, publisher, config, logger);
@@ -61,6 +66,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
     matchmaking: new MatchmakingController(matchmakingService),
     rooms: new RoomController(roomService, coordinator, voiceService),
     reports: new ReportController(reports),
+    social: new SocialController(socialService),
   };
 
   const app = express();

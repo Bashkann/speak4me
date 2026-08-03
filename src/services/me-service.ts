@@ -11,6 +11,7 @@ export class MeService {
     return {
       id: user.id,
       email: user.email,
+      handle: user.handle,
       displayName: user.displayName,
       englishLevel: user.englishLevel,
       nativeLanguage: user.nativeLanguage,
@@ -26,6 +27,7 @@ export class MeService {
     return {
       id: user.id,
       email: user.email,
+      handle: user.handle,
       displayName: user.displayName,
       englishLevel: user.englishLevel,
       nativeLanguage: user.nativeLanguage,
@@ -52,7 +54,11 @@ export class MeService {
           : [room.topicRound1?.textEn, room.topicRound2?.textEn].filter(Boolean),
         partners: room.participants
           .filter((participant) => participant.userId !== userId)
-          .map((participant) => participant.user.displayName),
+          .map((participant) => ({
+            id: participant.user.id,
+            handle: participant.user.handle,
+            displayName: participant.user.displayName,
+          })),
       })),
       page,
       limit,

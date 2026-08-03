@@ -2,7 +2,7 @@ import type { EnglishLevel, Pair, Prisma, PrismaClient, RoomStatus } from '@pris
 
 const roomInclude = {
   participants: {
-    include: { user: { select: { id: true, displayName: true, englishLevel: true } } },
+    include: { user: { select: { id: true, handle: true, displayName: true, englishLevel: true } } },
     orderBy: { seat: 'asc' as const },
   },
   topicRound1: true,

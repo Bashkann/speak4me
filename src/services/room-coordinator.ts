@@ -285,6 +285,11 @@ export class RoomCoordinator {
     this.publisher.room(room.id, 'round_ended', { roundNo: 2 });
     this.publisher.room(room.id, 'session_finished', {
       roomId: room.id,
+      participants: current.participants.map((participant) => ({
+        id: participant.user.id,
+        handle: participant.user.handle,
+        displayName: participant.user.displayName,
+      })),
       rounds: current.rounds.map((item) => ({
         roundNo: item.roundNo,
         speakerUserId: item.speakerUserId,

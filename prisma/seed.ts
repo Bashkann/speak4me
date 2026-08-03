@@ -69,6 +69,7 @@ async function seedDemoUsers(): Promise<void> {
       update: { displayName: `Demo User ${number}`, englishLevel: demoLevels[index]! },
       create: {
         email: `demo${number}@example.com`,
+        handle: `demo_user_${number}`,
         passwordHash,
         displayName: `Demo User ${number}`,
         englishLevel: demoLevels[index]!,
@@ -81,6 +82,7 @@ async function seedDemoUsers(): Promise<void> {
     update: { displayName: 'Speak Four Admin', role: 'ADMIN', suspendedAt: null },
     create: {
       email: 'admin@example.com',
+      handle: 'speak_four_admin',
       passwordHash,
       displayName: 'Speak Four Admin',
       englishLevel: 'C1',
@@ -110,6 +112,7 @@ async function seedProductionAdmin(): Promise<void> {
     update: { displayName, passwordHash, role: 'ADMIN', suspendedAt: null, isBanned: false },
     create: {
       email,
+      handle: `admin_${Date.now().toString(36)}`,
       passwordHash,
       displayName,
       englishLevel: 'C1',

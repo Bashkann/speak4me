@@ -21,7 +21,7 @@ function createHarness(index: number, publisher: RealtimePublisher) {
     createdAt: new Date(), finishedAt: null, topicRound1: null, topicRound2: null, rounds: [],
     participants: users.map((userId, seatIndex) => ({
       id: `${id}-p-${seatIndex}`, roomId: id, userId, seat: seatIndex + 1, pair: seatIndex === 0 ? 'A' : 'B',
-      joinedAt: new Date(), leftAt: null, user: { id: userId, displayName: `Room ${index} User ${seatIndex + 1}`, englishLevel: 'B1' },
+      joinedAt: new Date(), leftAt: null, user: { id: userId, handle: `room_${index}_user_${seatIndex + 1}`, displayName: `Room ${index} User ${seatIndex + 1}`, englishLevel: 'B1' },
     })),
   } as DetailedRoom;
   const repository = {
