@@ -3,26 +3,30 @@ import { useRoomStore } from './room-store';
 import type { RoomSnapshot } from '../types/rooms';
 
 const waitingRoom: RoomSnapshot = {
-  id: 'room-1', code: 'ABC123', type: 'matchmade', status: 'waiting', roundDurationSec: 420,
-  currentRound: null, roundEndsAt: null, currentTopic: null,
+  id: 'room-1', code: 'ABC123', type: 'matchmade', status: 'waiting', capacity: 2, roundDurationSec: 420,
+  currentRound: null, roundEndsAt: null, currentTopic: null, activeRound: null,
   participants: [
     { userId: 'user-a', displayName: 'A User', englishLevel: 'B1', seat: 1, pair: 'A', connected: true },
-    { userId: 'user-b', displayName: 'B User', englishLevel: 'B1', seat: 3, pair: 'B', connected: true },
+    { userId: 'user-b', displayName: 'B User', englishLevel: 'B1', seat: 2, pair: 'B', connected: true },
   ],
 };
 
 describe('room session store', () => {
   beforeEach(() => useRoomStore.getState().reset());
 
-  it('normalizes round events and swaps the speaking pair', () => {
+  it('normalizes server-authoritative round and topic events', () => {
     const store = useRoomStore.getState();
     store.hydrate(waitingRoom);
-    store.roundStarted({ round: 1, speakingPair: 'A', topicText: 'First topic', endsAt: '2026-08-03T10:07:00.000Z' });
-    expect(useRoomStore.getState()).toMatchObject({ speakingPair: 'A', topic: 'First topic', deadline: '2026-08-03T10:07:00.000Z' });
-    store.roundBreak('2026-08-03T10:07:20.000Z');
-    expect(useRoomStore.getState().speakingPair).toBeNull();
-    store.roundStarted({ round: 2, speakingPair: 'B', topicText: 'Second topic', endsAt: '2026-08-03T10:14:20.000Z' });
-    expect(useRoomStore.getState()).toMatchObject({ speakingPair: 'B', topic: 'Second topic' });
+    store.roundStarted({
+      roundNo: 1, speakerUserId: 'user-a', listenerUserId: 'user-b',
+      topic: { id: 'topic-1', textEn: 'First topic' }, endsAt: '2026-08-03T10:07:00.000Z',
+      swapsRemaining: 2, topicLocked: false, canContinuePrevious: false, previousTopic: null,
+    });
+    expect(useRoomStore.getState()).toMatchObject({ speakerUserId: 'user-a', topic: { textEn: 'First topic' }, swapsRemaining: 2 });
+    useRoomStore.getState().topicUpdated({ topic: { id: 'topic-2', textEn: 'Second topic' }, swapsRemaining: 1, topicLocked: false });
+    expect(useRoomStore.getState()).toMatchObject({ topic: { textEn: 'Second topic' }, swapsRemaining: 1 });
+    useRoomStore.getState().topicLockedByServer();
+    expect(useRoomStore.getState()).toMatchObject({ topicLocked: true, swapsRemaining: 0 });
   });
 
   it('updates participant connection state without losing the room snapshot', () => {

@@ -18,10 +18,35 @@ export interface RoomSnapshot {
   type: 'matchmade' | 'private';
   status: RoomStatus;
   roundDurationSec: number;
+  capacity: number;
   currentRound: number | null;
   roundEndsAt: string | null;
   currentTopic: string | null;
+  activeRound: ActiveRound | null;
   participants: RoomParticipant[];
+}
+
+export interface TopicOffer {
+  id: string;
+  textEn: string;
+}
+
+export interface ActiveRound {
+  roundNo: 1 | 2;
+  speakerUserId: string;
+  listenerUserId: string;
+  topic: TopicOffer | null;
+  endsAt: string;
+  swapsRemaining: number;
+  topicLocked: boolean;
+  canContinuePrevious: boolean;
+  previousTopic: TopicOffer | null;
+  continuedPrevious: boolean;
+}
+
+export interface RoundStartedEvent extends Omit<ActiveRound, 'continuedPrevious' | 'topic'> {
+  topic: TopicOffer;
+  continuedPrevious?: boolean;
 }
 
 export interface SessionHistoryItem {

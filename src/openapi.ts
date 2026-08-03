@@ -86,11 +86,17 @@ for (const route of [
 const participantSchema = z.object({
   userId: z.string().uuid(), displayName: z.string(), englishLevel: englishLevelSchema, seat: z.number().int(), pair: z.enum(['A', 'B']), connected: z.boolean(),
 });
+const topicOfferSchema = z.object({ id: z.string().uuid(), textEn: z.string() });
+const activeRoundSchema = z.object({
+  roundNo: z.union([z.literal(1), z.literal(2)]), speakerUserId: z.string().uuid(), listenerUserId: z.string().uuid(),
+  topic: topicOfferSchema.nullable(), endsAt: z.string().datetime(), swapsRemaining: z.number().int().nonnegative(),
+  topicLocked: z.boolean(), canContinuePrevious: z.boolean(), previousTopic: topicOfferSchema.nullable(), continuedPrevious: z.boolean(),
+});
 const roomSchema = z.object({
   id: z.string().uuid(), code: z.string().length(6), type: z.enum(['matchmade', 'private']),
   status: z.enum(['waiting', 'ready', 'round1', 'break', 'round2', 'finished', 'aborted']),
-  roundDurationSec: z.number().int(), currentRound: z.number().int().nullable(), roundEndsAt: z.string().datetime().nullable(),
-  currentTopic: z.string().nullable(), participants: z.array(participantSchema),
+  roundDurationSec: z.number().int(), capacity: z.literal(2), currentRound: z.number().int().nullable(), roundEndsAt: z.string().datetime().nullable(),
+  currentTopic: z.string().nullable(), activeRound: activeRoundSchema.nullable(), participants: z.array(participantSchema),
 });
 registry.registerPath({
   method: 'post', path: '/api/rooms', tags: ['Rooms'], security, summary: 'Create a private room',
