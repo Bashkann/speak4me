@@ -1,13 +1,20 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'framer-motion';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { logout } from '../api/auth';
+import { getConversations } from '../api/chat';
 import { useAuthStore } from '../store/auth-store';
 import { Brand } from './Brand';
 import { ThemeToggle } from './ThemeToggle';
+import { ChatRealtimeProvider } from './ChatRealtimeProvider';
 
 export function AppShell() {
+  return <ChatRealtimeProvider><AppShellContent /></ChatRealtimeProvider>;
+}
+
+function AppShellContent() {
   const user = useAuthStore((state) => state.user);
+  const location = useLocation();
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const clearSession = useAuthStore((state) => state.clearSession);
   const mutation = useMutation({
@@ -16,6 +23,9 @@ export function AppShell() {
     },
     onSettled: clearSession,
   });
+  const conversations = useQuery({ queryKey: ['conversations'], queryFn: getConversations });
+  const unread = conversations.data?.reduce((total, conversation) => total + conversation.unreadCount, 0) ?? 0;
+  const chatOpen = /^\/messages\/[^/]+$/.test(location.pathname);
 
   return (
     <div className="min-h-screen bg-canvas pb-24 sm:pb-0">
@@ -26,6 +36,7 @@ export function AppShell() {
             <NavItem to="/" label="Home" />
             <NavItem to="/history" label="History" />
             <NavItem to="/friends" label="Friends" />
+            <NavItem to="/messages" label="Messages" badge={unread} />
             <NavItem to="/profile" label="Profile" />
             {user?.role === 'ADMIN' && <NavItem to="/admin" label="Admin" />}
           </nav>
@@ -46,25 +57,26 @@ export function AppShell() {
         </div>
       </header>
       <Outlet />
-      <nav className={`safe-bottom fixed inset-x-3 bottom-2 z-40 grid ${user?.role === 'ADMIN' ? 'grid-cols-5' : 'grid-cols-4'} rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden`} aria-label="Mobile navigation">
+      {!chatOpen && <nav className={`safe-bottom fixed inset-x-3 bottom-2 z-40 grid ${user?.role === 'ADMIN' ? 'grid-cols-6' : 'grid-cols-5'} rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden`} aria-label="Mobile navigation">
         <MobileNavItem to="/" label="Home" icon="⌂" />
         <MobileNavItem to="/history" label="History" icon="◷" />
         <MobileNavItem to="/friends" label="Friends" icon="♧" />
+        <MobileNavItem to="/messages" label="Messages" icon="✉" badge={unread} />
         <MobileNavItem to="/profile" label="Profile" icon="◎" />
         {user?.role === 'ADMIN' && <MobileNavItem to="/admin" label="Admin" icon="◇" />}
-      </nav>
+      </nav>}
     </div>
   );
 }
 
-function MobileNavItem({ to, label, icon }: { to: string; label: string; icon: string }) {
+function MobileNavItem({ to, label, icon, badge = 0 }: { to: string; label: string; icon: string; badge?: number }) {
   const reducedMotion = useReducedMotion();
-  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `relative flex min-h-12 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${isActive ? 'text-brand-800' : 'text-slate-500'}`}>{({ isActive }) => <>{isActive && <motion.span layoutId="mobile-nav-indicator" className="absolute inset-0 rounded-xl bg-brand-50" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }} />}<motion.span animate={{ scale: isActive && !reducedMotion ? 1.14 : 1, y: isActive && !reducedMotion ? -1 : 0 }} className="relative text-lg leading-none" aria-hidden="true">{icon}</motion.span><span className="relative mt-1">{label}</span></>}</NavLink>;
+  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `relative flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold transition-colors ${isActive ? 'text-brand-800' : 'text-slate-500'}`}>{({ isActive }) => <>{isActive && <motion.span layoutId="mobile-nav-indicator" className="absolute inset-0 rounded-xl bg-brand-50" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }} />}<motion.span animate={{ scale: isActive && !reducedMotion ? 1.14 : 1, y: isActive && !reducedMotion ? -1 : 0 }} className="relative text-lg leading-none" aria-hidden="true">{icon}{badge > 0 && <span className="absolute -right-3 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-extrabold text-white">{Math.min(badge, 99)}</span>}</motion.span><span className="relative mt-1">{label}</span></>}</NavLink>;
 }
 
-function NavItem({ to, label }: { to: string; label: string }) {
+function NavItem({ to, label, badge = 0 }: { to: string; label: string; badge?: number }) {
   const reducedMotion = useReducedMotion();
-  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `relative rounded-lg px-4 py-2 text-sm font-bold transition-colors ${isActive ? 'text-brand-800' : 'text-slate-500 hover:text-ink'}`}>{({ isActive }) => <>{isActive && <motion.span layoutId="desktop-nav-indicator" className="absolute inset-0 rounded-lg bg-brand-50" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }} />}<span className="relative">{label}</span></>}</NavLink>;
+  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `relative rounded-lg px-3 py-2 text-sm font-bold transition-colors ${isActive ? 'text-brand-800' : 'text-slate-500 hover:text-ink'}`}>{({ isActive }) => <>{isActive && <motion.span layoutId="desktop-nav-indicator" className="absolute inset-0 rounded-lg bg-brand-50" transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }} />}<span className="relative">{label}{badge > 0 && <span className="ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-extrabold text-white">{Math.min(badge, 99)}</span>}</span></>}</NavLink>;
 }
 
 function getInitials(name: string): string {

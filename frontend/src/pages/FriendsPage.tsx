@@ -17,8 +17,11 @@ import { EmptyState } from '../components/EmptyState';
 import { PanelSkeleton } from '../components/LoadingSkeleton';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useToastStore } from '../store/toast-store';
+import { openConversation } from '../api/chat';
+import { useNavigate } from 'react-router-dom';
 
 export function FriendsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToastStore((state) => state.add);
   const [search, setSearch] = useState('');
@@ -61,6 +64,14 @@ export function FriendsPage() {
     },
     onError: (error) => toast('error', getApiErrorMessage(error, 'That action could not be completed.')),
   });
+  const startChat = useMutation({
+    mutationFn: openConversation,
+    onSuccess: (conversation) => {
+      void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      navigate(`/messages/${conversation.id}`);
+    },
+    onError: (error) => toast('error', getApiErrorMessage(error, 'Could not open that conversation.')),
+  });
 
   const isLoading = friends.isLoading || requests.isLoading;
   const error = friends.error ?? requests.error;
@@ -92,7 +103,7 @@ export function FriendsPage() {
           <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
             <section aria-labelledby="friends-title">
               <div className="flex items-center justify-between"><h2 id="friends-title" className="font-display text-2xl font-extrabold text-ink">Your friends</h2><span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{friends.data?.length ?? 0}</span></div>
-              {friends.data?.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"><AnimatePresence>{friends.data.map((friend) => <motion.article layout exit={{ opacity: 0, y: -8 }} key={friend.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><Avatar person={friend} online={friend.online} /><div className="min-w-0 flex-1"><p className="truncate font-bold text-ink">{friend.displayName}</p><p className="truncate text-xs font-semibold text-slate-400">@{friend.handle}</p></div></div><div className="mt-4 flex gap-2"><button type="button" className="secondary-button flex-1 !px-3 !py-2" disabled={action.isPending} onClick={() => action.mutate({ type: 'remove', id: friend.id, name: friend.displayName })}>Remove</button><button type="button" className="rounded-xl px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50" disabled={action.isPending} onClick={() => action.mutate({ type: 'block', id: friend.id, name: friend.displayName })}>Block</button></div></motion.article>)}</AnimatePresence></div> : <div className="mt-4"><EmptyState compact icon="＋" mood="encouraging" title="Build your circle" detail="Search above or add someone after a speaking session." /></div>}
+              {friends.data?.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"><AnimatePresence>{friends.data.map((friend) => <motion.article layout exit={{ opacity: 0, y: -8 }} key={friend.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><Avatar person={friend} online={friend.online} /><div className="min-w-0 flex-1"><p className="truncate font-bold text-ink">{friend.displayName}</p><p className="truncate text-xs font-semibold text-slate-400">@{friend.handle}</p></div></div><button type="button" className="primary-button mt-4 w-full !py-2" disabled={startChat.isPending} onClick={() => startChat.mutate(friend.id)}>Message</button><div className="mt-2 flex gap-2"><button type="button" className="secondary-button flex-1 !px-3 !py-2" disabled={action.isPending} onClick={() => action.mutate({ type: 'remove', id: friend.id, name: friend.displayName })}>Remove</button><button type="button" className="rounded-xl px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50" disabled={action.isPending} onClick={() => action.mutate({ type: 'block', id: friend.id, name: friend.displayName })}>Block</button></div></motion.article>)}</AnimatePresence></div> : <div className="mt-4"><EmptyState compact icon="＋" mood="encouraging" title="Build your circle" detail="Search above or add someone after a speaking session." /></div>}
             </section>
 
             <section aria-labelledby="requests-title">

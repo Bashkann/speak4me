@@ -14,6 +14,7 @@ import { RequireAdmin } from './components/RequireAdmin';
 import { PanelSkeleton } from './components/LoadingSkeleton';
 import { FullPageLoader } from './components/FullPageLoader';
 import { FriendsPage } from './pages/FriendsPage';
+import { MessagesPage } from './pages/MessagesPage';
 
 const RoomPage = lazy(() => import('./pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
@@ -33,6 +34,8 @@ export function App() {
             <Route path="/history" element={<PageTransition><HistoryPage /></PageTransition>} />
             <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
             <Route path="/friends" element={<PageTransition><FriendsPage /></PageTransition>} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/messages/:conversationId" element={<MessagesPage />} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<PageTransition><Suspense fallback={<div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12"><PanelSkeleton rows={5} /></div>}><AdminPage /></Suspense></PageTransition>} />
             </Route>

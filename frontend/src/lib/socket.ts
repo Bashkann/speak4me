@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/auth-store';
 
 const socketBaseUrl = new URL(API_URL, window.location.origin).origin;
 
-export function createSocket(namespace: '/me' | '/rooms'): Socket {
+export function createSocket(namespace: '/me' | '/rooms' | '/chat'): Socket {
   let refreshingAuth = false;
   const socket = io(`${socketBaseUrl}${namespace}`, {
     auth: { token: useAuthStore.getState().accessToken },
