@@ -20,6 +20,9 @@ async function main(): Promise<void> {
     runtime.repositories.users,
     runtime.services.coordinator,
     runtime.services.publisher,
+    runtime.services.socialService,
+    runtime.services.chatService,
+    runtime.services.presence,
     logger,
   );
 

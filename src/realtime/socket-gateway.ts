@@ -4,8 +4,12 @@ import { AppError } from '../lib/errors';
 import type { AppLogger } from '../lib/logger';
 import { UserRepository } from '../repositories/user-repository';
 import { RoomCoordinator } from '../services/room-coordinator';
+import { ChatService } from '../services/chat-service';
+import { PresenceRegistry } from '../services/presence-registry';
+import { SocialService } from '../services/social-service';
 import { TokenService } from '../services/token-service';
 import { RealtimePublisher } from './publisher';
+import { socketReadSchema, socketSendMessageSchema, typingSchema } from '../schemas/chat';
 
 const joinSchema = z.object({ roomId: z.string().uuid() });
 const roomActionSchema = z.object({ roomId: z.string().uuid() });
@@ -17,11 +21,15 @@ export function configureSockets(
   users: UserRepository,
   coordinator: RoomCoordinator,
   publisher: RealtimePublisher,
+  social: SocialService,
+  chatService: ChatService,
+  presence: PresenceRegistry,
   logger: AppLogger,
 ): void {
   const rooms = io.of('/rooms');
   const me = io.of('/me');
-  publisher.attach(rooms, me);
+  const chat = io.of('/chat');
+  publisher.attach(rooms, me, chat);
 
   const authenticate = async (socket: AuthenticatedSocket, next: (error?: Error) => void) => {
     try {
@@ -42,6 +50,7 @@ export function configureSockets(
 
   rooms.use(authenticate);
   me.use(authenticate);
+  chat.use(authenticate);
 
   rooms.on('connection', (socket: AuthenticatedSocket) => {
     const joined = new Set<string>();
@@ -108,6 +117,68 @@ export function configureSockets(
   me.on('connection', (socket: AuthenticatedSocket) => {
     void socket.join(`user:${socket.data.userId}`);
   });
+
+  const sendWindows = new Map<string, { startedAt: number; count: number }>();
+  chat.on('connection', (socket: AuthenticatedSocket) => {
+    const userId = socket.data.userId;
+    void socket.join(`user:${userId}`);
+    const firstConnection = presence.connect(userId);
+
+    void social.friends(userId).then((friends) => {
+      socket.emit('presence_snapshot', friends.map((friend) => ({ userId: friend.id, status: friend.online ? 'online' : 'offline' })));
+      if (firstConnection) {
+        for (const friend of friends) publisher.chatUser(friend.id, 'presence', { userId, status: 'online' });
+      }
+    }).catch((error) => logger.error({ err: error, userId }, 'Chat presence initialization failed'));
+
+    socket.on('typing', async (payload: unknown) => {
+      try {
+        const { conversationId, isTyping } = typingSchema.parse(payload);
+        const peerId = await chatService.peer(userId, conversationId);
+        publisher.chatUser(peerId, 'typing', { conversationId, userId, isTyping });
+      } catch (error) {
+        emitSocketError(socket, error);
+      }
+    });
+
+    socket.on('message_send', async (payload: unknown) => {
+      try {
+        enforceSocketSendLimit(sendWindows, userId);
+        const { conversationId, body } = socketSendMessageSchema.parse(payload);
+        await chatService.send(userId, conversationId, body);
+      } catch (error) {
+        emitSocketError(socket, error);
+      }
+    });
+
+    socket.on('mark_read', async (payload: unknown) => {
+      try {
+        const { conversationId } = socketReadSchema.parse(payload);
+        await chatService.read(userId, conversationId);
+      } catch (error) {
+        emitSocketError(socket, error);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      if (!presence.disconnect(userId)) return;
+      sendWindows.delete(userId);
+      void social.friends(userId).then((friends) => {
+        for (const friend of friends) publisher.chatUser(friend.id, 'presence', { userId, status: 'offline' });
+      }).catch((error) => logger.error({ err: error, userId }, 'Chat presence disconnect failed'));
+    });
+  });
+}
+
+function enforceSocketSendLimit(windows: Map<string, { startedAt: number; count: number }>, userId: string): void {
+  const now = Date.now();
+  const current = windows.get(userId);
+  if (!current || now - current.startedAt >= 60_000) {
+    windows.set(userId, { startedAt: now, count: 1 });
+    return;
+  }
+  if (current.count >= 30) throw new AppError(429, 'MESSAGE_RATE_LIMITED', 'Too many messages; try again shortly');
+  current.count += 1;
 }
 
 function emitSocketError(socket: Socket, error: unknown): void {

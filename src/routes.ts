@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import type { RequestHandler } from 'express';
 import { asyncHandler } from './lib/errors';
 import type { AuthController } from './controllers/auth-controller';
+import type { ChatController } from './controllers/chat-controller';
 import type { AdminController } from './controllers/admin-controller';
 import type { MatchmakingController } from './controllers/matchmaking-controller';
 import type { MeController } from './controllers/me-controller';
@@ -14,6 +15,7 @@ import { requireAdmin } from './middleware/admin';
 
 export interface Controllers {
   auth: AuthController;
+  chat: ChatController;
   admin: AdminController;
   me: MeController;
   topics: TopicController;
@@ -29,6 +31,13 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   const userLimit = rateLimit({
     windowMs: 60_000,
     limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: (req) => req.auth!.userId,
+  });
+  const messageLimit = rateLimit({
+    windowMs: 60_000,
+    limit: 30,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     keyGenerator: (req) => req.auth!.userId,
@@ -63,6 +72,11 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.post('/friends/block', asyncHandler(controllers.social.block));
   api.post('/friends/unblock', asyncHandler(controllers.social.unblock));
   api.get('/users/search', asyncHandler(controllers.social.search));
+  api.get('/conversations', asyncHandler(controllers.chat.list));
+  api.post('/conversations', asyncHandler(controllers.chat.open));
+  api.get('/conversations/:id/messages', asyncHandler(controllers.chat.history));
+  api.post('/conversations/:id/messages', messageLimit, asyncHandler(controllers.chat.send));
+  api.post('/conversations/:id/read', asyncHandler(controllers.chat.read));
 
   api.use('/admin', requireAdmin);
   api.get('/admin/stats', asyncHandler(controllers.admin.stats));

@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import type { PrismaClient } from '@prisma/client';
 import type { AppConfig } from './config';
 import { AuthController } from './controllers/auth-controller';
+import { ChatController } from './controllers/chat-controller';
 import { AdminController } from './controllers/admin-controller';
 import { MatchmakingController } from './controllers/matchmaking-controller';
 import { MeController } from './controllers/me-controller';
@@ -19,6 +20,7 @@ import type { AppLogger } from './lib/logger';
 import { createAuthMiddleware } from './middleware/auth';
 import { openApiDocument } from './openapi';
 import { AuthRepository } from './repositories/auth-repository';
+import { ChatRepository } from './repositories/chat-repository';
 import { AdminRepository } from './repositories/admin-repository';
 import { MatchmakingRepository } from './repositories/matchmaking-repository';
 import { ReportRepository } from './repositories/report-repository';
@@ -29,9 +31,11 @@ import { UserRepository } from './repositories/user-repository';
 import { RealtimePublisher } from './realtime/publisher';
 import { createApiRouter } from './routes';
 import { AuthService } from './services/auth-service';
+import { ChatService } from './services/chat-service';
 import { AdminService } from './services/admin-service';
 import { MatchmakingService } from './services/matchmaking-service';
 import { MeService } from './services/me-service';
+import { PresenceRegistry } from './services/presence-registry';
 import { RoomCoordinator } from './services/room-coordinator';
 import { RoomService } from './services/room-service';
 import { SocialService } from './services/social-service';
@@ -42,17 +46,20 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const users = new UserRepository(db);
   const adminRepository = new AdminRepository(db);
   const authRepository = new AuthRepository(db);
+  const chatRepository = new ChatRepository(db);
   const topics = new TopicRepository(db);
   const reports = new ReportRepository(db);
   const roomRepository = new RoomRepository(db);
   const socialRepository = new SocialRepository(db);
   const matchmakingRepository = new MatchmakingRepository(db);
   const publisher = new RealtimePublisher();
+  const presence = new PresenceRegistry();
   const tokenService = new TokenService(config);
   const authService = new AuthService(users, authRepository, tokenService);
   const meService = new MeService(users);
   const roomService = new RoomService(roomRepository, config);
-  const socialService = new SocialService(socialRepository);
+  const socialService = new SocialService(socialRepository, presence);
+  const chatService = new ChatService(chatRepository, socialRepository, publisher);
   const voiceService = new VoiceService(roomRepository, config, logger);
   const matchmakingService = new MatchmakingService(matchmakingRepository, publisher, config, logger);
   const coordinator = new RoomCoordinator(roomRepository, roomService, voiceService, publisher, config, logger);
@@ -60,6 +67,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
 
   const controllers = {
     auth: new AuthController(authService),
+    chat: new ChatController(chatService),
     admin: new AdminController(adminService),
     me: new MeController(meService),
     topics: new TopicController(topics),
@@ -102,7 +110,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
 
   return {
     app,
-    services: { tokenService, matchmakingService, coordinator, publisher },
+    services: { tokenService, matchmakingService, coordinator, publisher, socialService, chatService, presence },
     repositories: { users },
   };
 }
