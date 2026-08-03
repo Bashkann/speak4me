@@ -25,10 +25,12 @@ services:
 
   api:
     build: .
+    command: ["sh", "-c", "npm run db:migrate && node dist/prisma/seed.js && npm start"]
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3000
       DATABASE_URL: postgresql://speaking:speaking@postgres:5432/speaking?schema=public
+      CORS_ORIGIN: http://localhost:${FRONTEND_PORT:-5174},http://localhost:5173,http://localhost:5180
       JWT_ACCESS_SECRET: docker-development-access-secret-32-chars
       JWT_REFRESH_SECRET: docker-development-refresh-secret-32chars
       ACCESS_TOKEN_TTL: 15m

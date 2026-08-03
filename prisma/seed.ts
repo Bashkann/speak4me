@@ -45,6 +45,11 @@ async function main(): Promise<void> {
   const missingTopics = topics.filter((topic) => !existingTopics.has(topic.textEn));
   if (missingTopics.length) await prisma.topic.createMany({ data: missingTopics });
 
+  if (process.argv.includes('--production')) {
+    await seedProductionAdmin();
+    return;
+  }
+
   const passwordHash = await bcrypt.hash('DemoPass123!', 12);
   for (let index = 0; index < demoLevels.length; index += 1) {
     const number = index + 1;
@@ -67,6 +72,35 @@ async function main(): Promise<void> {
       email: 'admin@example.com',
       passwordHash,
       displayName: 'Speak Four Admin',
+      englishLevel: 'C1',
+      nativeLanguage: 'English',
+      goals: ['community'],
+      interests: ['culture', 'technology'],
+      role: 'ADMIN',
+    },
+  });
+}
+
+async function seedProductionAdmin(): Promise<void> {
+  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  const displayName = process.env.SEED_ADMIN_DISPLAY_NAME?.trim() || 'Speak Four Admin';
+
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+    throw new Error('SEED_ADMIN_EMAIL must be set to a valid email address');
+  }
+  if (!password || password.length < 12) {
+    throw new Error('SEED_ADMIN_PASSWORD must be set and contain at least 12 characters');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await prisma.user.upsert({
+    where: { email },
+    update: { displayName, passwordHash, role: 'ADMIN', suspendedAt: null, isBanned: false },
+    create: {
+      email,
+      passwordHash,
+      displayName,
       englishLevel: 'C1',
       nativeLanguage: 'English',
       goals: ['community'],

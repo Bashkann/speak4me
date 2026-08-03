@@ -64,9 +64,10 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   };
 
   const app = express();
+  app.set('trust proxy', config.NODE_ENV === 'production' ? 1 : false);
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors());
+  app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: '32kb' }));
   app.use(pinoHttp({
     logger,

@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   const logger = createLogger(config);
   const runtime = createApplication(config, prisma, logger);
   const server = http.createServer(runtime.app);
-  const io = new Server(server, { cors: { origin: true, credentials: true } });
+  const io = new Server(server, { cors: { origin: config.CORS_ORIGIN, credentials: true } });
 
   configureSockets(
     io,
