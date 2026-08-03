@@ -5,7 +5,10 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "preDeployCommand": "npm run db:migrate && npm run db:seed:topics",
+    "preDeployCommand": [
+      "npm run db:migrate",
+      "npm run db:seed:topics"
+    ],
     "startCommand": "npm start",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 300,
