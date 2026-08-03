@@ -20,6 +20,11 @@ describe('production configuration', () => {
       'https://www.speak.example.com',
     ]);
     expect(config.TOPIC_OFFER_CAP).toBe(3);
+    expect(config.IMAGE_UPLOADS_ENABLED).toBe(false);
+  });
+
+  it('requires every private storage setting when image uploads are enabled', () => {
+    expect(() => loadConfig({ ...productionEnv, IMAGE_UPLOADS_ENABLED: 'true' })).toThrow(/S3_REGION/);
   });
 
   it('rejects insecure production browser and media URLs', () => {

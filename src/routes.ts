@@ -11,6 +11,7 @@ import type { ReportController } from './controllers/report-controller';
 import type { RoomController } from './controllers/room-controller';
 import type { TopicController } from './controllers/topic-controller';
 import type { SocialController } from './controllers/social-controller';
+import type { UploadController } from './controllers/upload-controller';
 import { requireAdmin } from './middleware/admin';
 
 export interface Controllers {
@@ -23,6 +24,7 @@ export interface Controllers {
   rooms: RoomController;
   reports: ReportController;
   social: SocialController;
+  uploads: UploadController;
 }
 
 export function createApiRouter(controllers: Controllers, authenticate: RequestHandler): Router {
@@ -77,6 +79,8 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.get('/conversations/:id/messages', asyncHandler(controllers.chat.history));
   api.post('/conversations/:id/messages', messageLimit, asyncHandler(controllers.chat.send));
   api.post('/conversations/:id/read', asyncHandler(controllers.chat.read));
+  api.get('/uploads/config', asyncHandler(controllers.uploads.config));
+  api.post('/uploads/sign', messageLimit, asyncHandler(controllers.uploads.sign));
 
   api.use('/admin', requireAdmin);
   api.get('/admin/stats', asyncHandler(controllers.admin.stats));

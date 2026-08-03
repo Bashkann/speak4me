@@ -8,6 +8,7 @@ export const messageHistorySchema = z.object({
 });
 export const sendMessageSchema = z.object({
   body: z.string().max(2000).default(''),
+  uploadId: z.string().uuid().optional(),
 });
 export const typingSchema = z.object({
   conversationId: z.string().uuid(),

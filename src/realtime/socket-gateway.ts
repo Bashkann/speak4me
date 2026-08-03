@@ -144,8 +144,8 @@ export function configureSockets(
     socket.on('message_send', async (payload: unknown) => {
       try {
         enforceSocketSendLimit(sendWindows, userId);
-        const { conversationId, body } = socketSendMessageSchema.parse(payload);
-        await chatService.send(userId, conversationId, body);
+        const { conversationId, body, uploadId } = socketSendMessageSchema.parse(payload);
+        await chatService.send(userId, conversationId, body, uploadId);
       } catch (error) {
         emitSocketError(socket, error);
       }

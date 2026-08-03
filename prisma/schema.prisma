@@ -83,6 +83,7 @@ model User {
   conversationsAsA Conversation[]    @relation("ConversationUserA")
   conversationsAsB Conversation[]    @relation("ConversationUserB")
   messagesSent     Message[]
+  uploadGrants     UploadGrant[]
 
   @@index([role])
   @@index([suspendedAt])
@@ -132,6 +133,21 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([conversationId, readAt])
   @@index([senderId, createdAt])
+}
+
+model UploadGrant {
+  id          String   @id @default(uuid())
+  userId      String
+  objectKey   String   @unique
+  publicUrl   String
+  contentType String
+  sizeBytes   Int
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Topic {

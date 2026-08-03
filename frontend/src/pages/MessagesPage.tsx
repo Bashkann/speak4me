@@ -9,6 +9,7 @@ import { useChatRealtime } from '../components/ChatRealtimeProvider';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
 import { useToastStore } from '../store/toast-store';
+import { getUploadConfig, uploadMessageImage } from '../api/uploads';
 
 export function MessagesPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -19,9 +20,14 @@ export function MessagesPage() {
   const realtime = useChatRealtime();
   const reducedMotion = useReducedMotion();
   const [draft, setDraft] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInput = useRef<HTMLInputElement | null>(null);
   const typingTimer = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const conversations = useQuery({ queryKey: ['conversations'], queryFn: getConversations });
+  const uploadConfig = useQuery({ queryKey: ['upload-config'], queryFn: getUploadConfig, staleTime: 5 * 60_000 });
   const selected = conversations.data?.find((conversation) => conversation.id === conversationId);
   const messages = useQuery({
     queryKey: ['messages', conversationId],
@@ -30,15 +36,31 @@ export function MessagesPage() {
   });
 
   const sender = useMutation({
-    mutationFn: (body: string) => sendMessage(conversationId!, body),
+    mutationFn: async ({ body, file }: { body: string; file: File | null }) => {
+      setUploadProgress(file ? 1 : 0);
+      const signed = file ? await uploadMessageImage(file, setUploadProgress) : null;
+      return sendMessage(conversationId!, body, signed?.uploadId);
+    },
     onSuccess: (message) => {
       queryClient.setQueryData<MessageHistory>(['messages', conversationId], (current) => current && !current.items.some((item) => item.id === message.id) ? { ...current, items: [...current.items, message] } : current);
       setDraft('');
+      setImageFile(null);
+      setUploadProgress(0);
       realtime.socket?.emit('typing', { conversationId, isTyping: false });
       void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: (error) => toast('error', getApiErrorMessage(error, 'Your message could not be sent.')),
   });
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   const older = useMutation({
     mutationFn: () => getMessages(conversationId!, messages.data?.nextBefore ?? undefined),
@@ -75,7 +97,20 @@ export function MessagesPage() {
 
   const submit = () => {
     const body = draft.trim();
-    if (body && conversationId && !sender.isPending) sender.mutate(body);
+    if ((body || imageFile) && conversationId && !sender.isPending) sender.mutate({ body, file: imageFile });
+  };
+
+  const chooseImage = (file: File | undefined) => {
+    if (!file || !uploadConfig.data?.enabled) return;
+    if (!uploadConfig.data.contentTypes.includes(file.type)) {
+      toast('warning', 'Choose a JPEG, PNG, WebP, or GIF image.');
+      return;
+    }
+    if (file.size > uploadConfig.data.maxBytes) {
+      toast('warning', `Image must be smaller than ${Math.round(uploadConfig.data.maxBytes / 1024 / 1024)} MB.`);
+      return;
+    }
+    setImageFile(file);
   };
 
   return (
@@ -106,7 +141,7 @@ export function MessagesPage() {
                 {realtime.typing.get(conversationId) && realtime.typing.get(conversationId) !== user?.id && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 flex items-center gap-1 text-xs font-semibold text-slate-400"><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:120ms]" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:240ms]" /><span className="ml-1">typing</span></motion.div>}
                 <div ref={bottomRef} />
               </div>
-              <form className="safe-bottom shrink-0 border-t border-slate-200 bg-white p-3 sm:p-4" onSubmit={(event) => { event.preventDefault(); submit(); }}><div className="flex items-end gap-2"><label className="min-w-0 flex-1"><span className="sr-only">Message</span><textarea rows={1} value={draft} maxLength={2000} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit(); } }} placeholder="Write a message…" className="field max-h-32 min-h-12 resize-none !py-3" /></label><button type="submit" disabled={!draft.trim() || sender.isPending} className="primary-button h-12 w-12 shrink-0 !p-0" aria-label="Send message">{sender.isPending ? <span className="inline-spinner" /> : '↑'}</button></div><p className="mt-1.5 text-right text-[10px] font-medium text-slate-400">{draft.length} / 2000</p></form>
+              <form className="safe-bottom shrink-0 border-t border-slate-200 bg-white p-3 sm:p-4" onSubmit={(event) => { event.preventDefault(); submit(); }}>{imagePreview && <div className="mb-2 flex items-center gap-3 rounded-xl bg-slate-50 p-2"><img src={imagePreview} alt="Selected upload preview" className="h-16 w-16 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-ink">{imageFile?.name}</p><p className="mt-1 text-[10px] text-slate-400">{imageFile ? `${(imageFile.size / 1024 / 1024).toFixed(1)} MB` : ''}</p>{sender.isPending && imageFile && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200"><motion.div className="h-full bg-brand-500" animate={{ width: `${uploadProgress}%` }} /></div>}</div><button type="button" onClick={() => setImageFile(null)} disabled={sender.isPending} className="grid h-8 w-8 place-items-center rounded-full bg-white text-slate-500" aria-label="Remove selected image">×</button></div>}<div className="flex items-end gap-2">{uploadConfig.data?.enabled && <><input ref={fileInput} type="file" className="sr-only" accept={uploadConfig.data.contentTypes.join(',')} onChange={(event) => { chooseImage(event.target.files?.[0]); event.currentTarget.value = ''; }} /><button type="button" onClick={() => fileInput.current?.click()} disabled={sender.isPending} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-lg text-slate-600" aria-label="Add image">▧</button></>}<label className="min-w-0 flex-1"><span className="sr-only">Message</span><textarea rows={1} value={draft} maxLength={2000} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit(); } }} placeholder="Write a message…" className="field max-h-32 min-h-12 resize-none !py-3" /></label><button type="submit" disabled={(!draft.trim() && !imageFile) || sender.isPending} className="primary-button h-12 w-12 shrink-0 !p-0" aria-label="Send message">{sender.isPending ? <span className="inline-spinner" /> : '↑'}</button></div><p className="mt-1.5 text-right text-[10px] font-medium text-slate-400">{draft.length} / 2000</p></form>
             </>
           )}
         </section>
@@ -116,7 +151,8 @@ export function MessagesPage() {
 }
 
 function MessageBubble({ message, own, reducedMotion }: { message: Message; own: boolean; reducedMotion: boolean }) {
-  return <motion.article initial={{ opacity: 0, y: reducedMotion ? 0 : 7, x: reducedMotion ? 0 : own ? 8 : -8 }} animate={{ opacity: 1, y: 0, x: 0 }} className={`flex ${own ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[70%] ${own ? 'rounded-br-md bg-brand-700 text-white' : 'rounded-bl-md bg-white text-ink'}`}><p className="whitespace-pre-wrap break-words text-sm leading-5">{message.body}</p><div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${own ? 'text-brand-200' : 'text-slate-400'}`}><time dateTime={message.createdAt}>{compactTime(message.createdAt)}</time>{own && <span aria-label={message.readAt ? 'Read' : 'Sent'}>{message.readAt ? '✓✓' : '✓'}</span>}</div></div></motion.article>;
+  const [expanded, setExpanded] = useState(false);
+  return <><motion.article initial={{ opacity: 0, y: reducedMotion ? 0 : 7, x: reducedMotion ? 0 : own ? 8 : -8 }} animate={{ opacity: 1, y: 0, x: 0 }} className={`flex ${own ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[70%] ${own ? 'rounded-br-md bg-brand-700 text-white' : 'rounded-bl-md bg-white text-ink'}`}>{message.imageUrl && <button type="button" onClick={() => setExpanded(true)} className="mb-2 block overflow-hidden rounded-xl"><img src={message.imageUrl} alt="Shared in conversation" loading="lazy" className="max-h-72 w-full object-cover" /></button>}{message.body && <p className="whitespace-pre-wrap break-words text-sm leading-5">{message.body}</p>}<div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${own ? 'text-brand-200' : 'text-slate-400'}`}><time dateTime={message.createdAt}>{compactTime(message.createdAt)}</time>{own && <span aria-label={message.readAt ? 'Read' : 'Sent'}>{message.readAt ? '✓✓' : '✓'}</span>}</div></div></motion.article><AnimatePresence>{expanded && message.imageUrl && <motion.button type="button" aria-label="Close image preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExpanded(false)} className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-5"><img src={message.imageUrl} alt="Expanded shared image" className="max-h-full max-w-full rounded-2xl object-contain" /></motion.button>}</AnimatePresence></>;
 }
 
 function Avatar({ name, online }: { name: string; online?: boolean }) { return <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-100 font-display text-xs font-extrabold text-brand-800">{initials(name)}{online !== undefined && <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${online ? 'bg-brand-500' : 'bg-slate-300'}`} />}</span>; }

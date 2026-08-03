@@ -47,13 +47,14 @@ export class ChatService {
     return this.chat.history(conversation.id, before, limit);
   }
 
-  async send(userId: string, conversationOrUserId: string, rawBody: string) {
+  async send(userId: string, conversationOrUserId: string, rawBody: string, uploadId?: string) {
     const conversation = await this.resolveConversation(userId, conversationOrUserId);
     const peerId = this.peerId(conversation, userId);
     await this.assertCanChat(userId, peerId);
     const body = this.sanitizeBody(rawBody);
-    if (!body) throw new AppError(400, 'MESSAGE_EMPTY', 'Message body is required');
-    const message = await this.chat.createMessage(conversation.id, userId, body);
+    if (!body && !uploadId) throw new AppError(400, 'MESSAGE_EMPTY', 'Message body or image is required');
+    const message = await this.chat.createMessage(conversation.id, userId, body, uploadId);
+    if (!message) throw new AppError(400, 'UPLOAD_INVALID', 'The image upload is invalid, expired, or already used');
     const payload = { conversationId: conversation.id, message };
     this.publisher.chatUser(peerId, 'message_new', payload);
     this.publisher.chatUser(userId, 'message_new', payload);

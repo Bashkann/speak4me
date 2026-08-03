@@ -63,9 +63,22 @@ export class ChatRepository {
     };
   }
 
-  async createMessage(conversationId: string, senderId: string, body: string) {
+  async createMessage(conversationId: string, senderId: string, body: string, uploadId?: string) {
     return this.db.$transaction(async (tx) => {
-      const message = await tx.message.create({ data: { conversationId, senderId, body } });
+      let imageUrl: string | undefined;
+      if (uploadId) {
+        const grant = await tx.uploadGrant.findFirst({
+          where: { id: uploadId, userId: senderId, consumedAt: null, expiresAt: { gt: new Date() } },
+        });
+        if (!grant) return null;
+        const claimed = await tx.uploadGrant.updateMany({
+          where: { id: grant.id, consumedAt: null },
+          data: { consumedAt: new Date() },
+        });
+        if (!claimed.count) return null;
+        imageUrl = grant.publicUrl;
+      }
+      const message = await tx.message.create({ data: { conversationId, senderId, body, imageUrl } });
       await tx.conversation.update({ where: { id: conversationId }, data: { updatedAt: message.createdAt } });
       return message;
     });

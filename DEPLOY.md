@@ -80,6 +80,9 @@ READY_COUNTDOWN_SEC=5
 ROUND_BREAK_SEC=20
 RECONNECT_GRACE_SEC=45
 DEFAULT_ROUND_DURATION_SEC=420
+TOPIC_OFFER_CAP=3
+IMAGE_UPLOADS_ENABLED=false
+IMAGE_MAX_BYTES=5242880
 LOG_LEVEL=info
 ```
 
@@ -144,6 +147,10 @@ exit
 
 Bu komut 30 konuşma topic'ini ve yalnız verdiğiniz ilk admin hesabını idempotent biçimde oluşturur; demo hesapları oluşturmaz. Başarıdan sonra `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_EMAIL` ve `SEED_ADMIN_DISPLAY_NAME` değişkenlerini Railway'den silip değişikliği deploy edin. Railway'in deployed container SSH desteği: [railway ssh](https://docs.railway.com/cli/ssh).
 
+### 2.5 İsteğe bağlı mesaj görselleri
+
+Varsayılan `IMAGE_UPLOADS_ENABLED=false` ile text mesajlaşma eksiksiz çalışır ve görsel düğmesi gösterilmez. Görselleri açmak için AWS S3 veya S3-compatible bir bucket oluşturun; Railway backend'e `IMAGE_UPLOADS_ENABLED=true`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` ve public HTTPS `S3_PUBLIC_BASE_URL` ekleyin. Cloudflare R2 benzeri servislerde ayrıca `S3_ENDPOINT` verin. Bucket CORS ayarı yalnız kesin Vercel origin'inden `PUT` ve `Content-Type` header'ına izin vermelidir. Secret değerlerini asla `VITE_*` değişkeni yapmayın.
+
 ## 3. Vercel: frontend
 
 1. Vercel'de **Add New → Project** ile aynı GitHub repository'sini import edin.
@@ -162,7 +169,7 @@ Bu komut 30 konuşma topic'ini ve yalnız verdiğiniz ilk admin hesabını idemp
 4. Deploy edin. `frontend/vercel.json` tüm SPA route'larını `index.html`e rewrite eder; `/rooms/...`, `/history` ve browser refresh 404 vermez. Bu, Vercel'in Vite SPA için önerdiği ayardır: [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite).
 5. Vercel'in verdiği kesin production URL'yi kopyalayın: `https://YOUR-ACTUAL-PROJECT.vercel.app`.
 
-`VITE_API_URL` build-time public bir değerdir. Railway URL'si değişirse Vercel değişkenini güncelleyip yeniden deploy etmek zorundasınız. Ayrı WebSocket değişkeni yoktur: frontend Socket.IO `/me` ve `/rooms` namespace'lerini bu HTTPS backend origin'inden açar ve tarayıcı bağlantıyı WSS'e yükseltir. LiveKit URL frontend build'ine gömülmez; her oda için backend `voice-token` cevabından runtime'da gelir.
+`VITE_API_URL` build-time public bir değerdir. Railway URL'si değişirse Vercel değişkenini güncelleyip yeniden deploy etmek zorundasınız. Ayrı WebSocket değişkeni yoktur: frontend Socket.IO `/me`, `/rooms` ve `/chat` namespace'lerini bu HTTPS backend origin'inden açar ve tarayıcı bağlantıyı WSS'e yükseltir. LiveKit URL frontend build'ine gömülmez; her oda için backend `voice-token` cevabından runtime'da gelir.
 
 ## 4. İki tarafı birbirine bağlayın
 

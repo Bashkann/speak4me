@@ -20,6 +20,8 @@ export const testConfig: AppConfig = {
   RECONNECT_GRACE_SEC: 45,
   DEFAULT_ROUND_DURATION_SEC: 420,
   TOPIC_OFFER_CAP: 3,
+  IMAGE_UPLOADS_ENABLED: false,
+  IMAGE_MAX_BYTES: 5 * 1024 * 1024,
   LOG_LEVEL: 'silent',
 };
 

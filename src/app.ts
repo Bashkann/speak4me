@@ -15,6 +15,7 @@ import { ReportController } from './controllers/report-controller';
 import { RoomController } from './controllers/room-controller';
 import { SocialController } from './controllers/social-controller';
 import { TopicController } from './controllers/topic-controller';
+import { UploadController } from './controllers/upload-controller';
 import { errorHandler, notFoundHandler } from './lib/errors';
 import type { AppLogger } from './lib/logger';
 import { createAuthMiddleware } from './middleware/auth';
@@ -28,6 +29,7 @@ import { RoomRepository } from './repositories/room-repository';
 import { SocialRepository } from './repositories/social-repository';
 import { TopicRepository } from './repositories/topic-repository';
 import { UserRepository } from './repositories/user-repository';
+import { UploadRepository } from './repositories/upload-repository';
 import { RealtimePublisher } from './realtime/publisher';
 import { createApiRouter } from './routes';
 import { AuthService } from './services/auth-service';
@@ -41,9 +43,11 @@ import { RoomService } from './services/room-service';
 import { SocialService } from './services/social-service';
 import { TokenService } from './services/token-service';
 import { VoiceService } from './services/voice-service';
+import { UploadService } from './services/upload-service';
 
 export function createApplication(config: AppConfig, db: PrismaClient, logger: AppLogger) {
   const users = new UserRepository(db);
+  const uploadRepository = new UploadRepository(db);
   const adminRepository = new AdminRepository(db);
   const authRepository = new AuthRepository(db);
   const chatRepository = new ChatRepository(db);
@@ -60,6 +64,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const roomService = new RoomService(roomRepository, config);
   const socialService = new SocialService(socialRepository, presence);
   const chatService = new ChatService(chatRepository, socialRepository, publisher);
+  const uploadService = new UploadService(uploadRepository, config);
   const voiceService = new VoiceService(roomRepository, config, logger);
   const matchmakingService = new MatchmakingService(matchmakingRepository, publisher, config, logger);
   const coordinator = new RoomCoordinator(roomRepository, roomService, voiceService, publisher, config, logger);
@@ -75,6 +80,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
     rooms: new RoomController(roomService, coordinator, voiceService),
     reports: new ReportController(reports),
     social: new SocialController(socialService),
+    uploads: new UploadController(uploadService),
   };
 
   const app = express();

@@ -22,8 +22,8 @@ export class ChatController {
 
   send = async (req: Request, res: Response) => {
     const { id } = conversationParamsSchema.parse(req.params);
-    const { body } = sendMessageSchema.parse(req.body);
-    res.status(201).json(await this.service.send(req.auth!.userId, id, body));
+    const { body, uploadId } = sendMessageSchema.parse(req.body);
+    res.status(201).json(await this.service.send(req.auth!.userId, id, body, uploadId));
   };
 
   read = async (req: Request, res: Response) => {

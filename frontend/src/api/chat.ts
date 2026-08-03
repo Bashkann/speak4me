@@ -36,8 +36,8 @@ export async function getMessages(conversationId: string, before?: string): Prom
   return (await http.get<MessageHistory>(`/conversations/${conversationId}/messages`, { params: { before, limit: 50 } })).data;
 }
 
-export async function sendMessage(conversationId: string, body: string): Promise<Message> {
-  return (await http.post<Message>(`/conversations/${conversationId}/messages`, { body })).data;
+export async function sendMessage(conversationId: string, body: string, uploadId?: string): Promise<Message> {
+  return (await http.post<Message>(`/conversations/${conversationId}/messages`, { body, uploadId })).data;
 }
 
 export async function markConversationRead(conversationId: string): Promise<void> {

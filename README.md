@@ -35,6 +35,8 @@ Administrators see an additional `/admin` navigation item. The panel includes co
 
 The frontend includes light, dark, and system themes, responsive desktop navigation, and a mobile bottom tab bar. At 375px the two participant cards stack cleanly while large microphone/leave controls remain above the safe area.
 
+Accepted friends can exchange persistent one-to-one messages through the `/chat` Socket.IO namespace. The Friends screen supports handle/name discovery, incoming and outgoing requests, removal, and blocking without exposing email addresses. Conversation access is checked again on every send, and unread, typing, read, and presence state update in real time.
+
 The interface also includes reduced-motion-aware micro-interactions, floating-label authentication, animated onboarding feedback, loading skeletons, friendly empty states, sliding navigation indicators, audio-responsive room feedback, and an original contextual buddy that reacts without covering controls. Optional CC0 Lottie accents are credited and lazy-loaded. The admin route is lazy-loaded to keep it out of the normal learner path.
 
 ## Local development
@@ -78,9 +80,19 @@ The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycl
 | `RECONNECT_GRACE_SEC` | `45` | Active-session reconnect grace |
 | `DEFAULT_ROUND_DURATION_SEC` | `420` | Default round length; room requests accept 300–600 |
 | `TOPIC_OFFER_CAP` | `3` | Total topics offered per speaker, including the initial suggestion |
+| `IMAGE_UPLOADS_ENABLED` | `false` | Enables the optional S3-compatible image-message module |
+| `IMAGE_MAX_BYTES` | `5242880` | Maximum signed image size (hard capped at 10 MB) |
+| `S3_ENDPOINT` | optional | S3-compatible endpoint, required for providers such as Cloudflare R2 |
+| `S3_REGION` / `S3_BUCKET` | required when enabled | Object-store region and private upload bucket |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | required when enabled | Server-only object-store credentials |
+| `S3_PUBLIC_BASE_URL` | required when enabled | Public HTTPS base URL used in persisted messages |
 | `LOG_LEVEL` | `info` | Pino log level |
 
 All environment input is validated at startup. Refresh tokens are stored only as SHA-256 hashes and rotate on use.
+
+### Optional image messages
+
+Text messaging works with no storage configuration. To enable images, create an S3-compatible bucket, expose objects through a public HTTPS base URL, and set all image variables above. Configure the bucket's CORS policy to allow `PUT` from the exact frontend origin with the `Content-Type` header. The API signs five-minute, size-bound image PUTs and records a one-use upload grant; clients cannot attach arbitrary image URLs. Production uploads never touch Railway's ephemeral filesystem. If any required value is absent, startup rejects `IMAGE_UPLOADS_ENABLED=true`; with the default `false`, the image button stays hidden.
 
 ## One full session
 

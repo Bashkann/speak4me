@@ -1,6 +1,6 @@
 # Speak Four frontend
 
-React 18 test client for the English Speaking Rooms API. It covers guided onboarding, profile editing, administration, matchmaking, private rooms, realtime two-round sessions, LiveKit audio, reconnect recovery, and history.
+React 18 test client for the English Speaking Rooms API. It covers guided onboarding, profile editing, friends, direct messaging, administration, matchmaking, private rooms, realtime two-round sessions, LiveKit audio, reconnect recovery, and history.
 
 ## Run locally
 
@@ -36,6 +36,12 @@ Alternatively, `docker compose up --build` at the repository root builds and ser
 - **Create account** opens a six-step onboarding wizard. It requires at least one goal and interest, supports CEFR A1–C2, and signs the new user in when the review step completes.
 - **Profile** allows inline editing of the name, level, native language, goals, and interests. It also shows completed sessions, total speaking-practice minutes, last-session date, theme controls, and logout.
 - **Admin** is visible only to an administrator. Use `admin@example.com` / `DemoPass123!` in the local seeded environment to test stats, user suspension/roles, room force-close, reports, and topics. A normal user is redirected by the client and receives HTTP 403 from admin APIs.
+
+## Friends and messages
+
+- **Friends** searches public handles/display names, manages incoming/outgoing requests, and supports remove/block actions. Search and friend lists never return email addresses.
+- **Messages** opens only for accepted friends. Text messages persist, arrive through `/chat`, and include unread, typing, read, and presence state.
+- Image controls are requested from `/uploads/config` and remain absent by default. When the backend's S3-compatible module is enabled, the browser uploads directly through a presigned PUT and sends only the resulting one-use upload grant to the API.
 
 ## Mobile and accessibility notes
 
