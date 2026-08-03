@@ -74,7 +74,7 @@ export function MessagesPage() {
     if (!conversationId || !messages.data?.items.length) return;
     void markConversationRead(conversationId).then(() => {
       queryClient.setQueryData<Awaited<ReturnType<typeof getConversations>>>(['conversations'], (current) => current?.map((conversation) => conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation));
-    });
+    }).catch(() => undefined);
   }, [conversationId, messages.data?.items.length, queryClient]);
 
   useEffect(() => {
@@ -124,7 +124,7 @@ export function MessagesPage() {
             {conversations.data?.length === 0 && <EmptyState compact icon="✉" mood="thinking" title="No conversations yet" detail="Open a chat from your Friends page." action={<button className="primary-button" onClick={() => navigate('/friends')}>Find friends</button>} />}
             <div className="space-y-1">{conversations.data?.map((conversation) => {
               const isOnline = realtime.online.get(conversation.partner.id);
-              return <button type="button" key={conversation.id} onClick={() => navigate(`/messages/${conversation.id}`)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${conversation.id === conversationId ? 'bg-brand-50' : 'hover:bg-slate-50'}`}><Avatar name={conversation.partner.displayName} online={isOnline} /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-bold text-ink">{conversation.partner.displayName}</p><time className="shrink-0 text-[10px] font-semibold text-slate-400">{conversation.lastMessage ? compactTime(conversation.lastMessage.createdAt) : ''}</time></div><div className="mt-1 flex items-center gap-2"><p className={`truncate text-xs ${conversation.unreadCount ? 'font-bold text-ink' : 'text-slate-500'}`}>{conversation.lastMessage?.body || 'Start the conversation'}</p>{conversation.unreadCount > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-extrabold text-white">{Math.min(conversation.unreadCount, 99)}</span>}</div></div></button>;
+              return <button type="button" key={conversation.id} onClick={() => navigate(`/messages/${conversation.id}`)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${conversation.id === conversationId ? 'bg-brand-50' : 'hover:bg-slate-50'}`}><Avatar name={conversation.partner.displayName} online={isOnline} /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-bold text-ink">{conversation.partner.displayName}</p><time className="shrink-0 text-[10px] font-semibold text-slate-400">{conversation.lastMessage ? compactTime(conversation.lastMessage.createdAt) : ''}</time></div><div className="mt-1 flex items-center gap-2"><p className={`truncate text-xs ${conversation.unreadCount ? 'font-bold text-ink' : 'text-slate-500'}`}>{conversation.lastMessage?.body || (conversation.lastMessage?.imageUrl ? 'Photo' : 'Start the conversation')}</p>{conversation.unreadCount > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-extrabold text-white">{Math.min(conversation.unreadCount, 99)}</span>}</div></div></button>;
             })}</div>
           </div>
         </aside>

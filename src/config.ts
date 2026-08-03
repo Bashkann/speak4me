@@ -65,6 +65,13 @@ const envSchema = z.object({
   }
   if (config.NODE_ENV !== 'production') return;
 
+  if (config.IMAGE_UPLOADS_ENABLED && !config.S3_PUBLIC_BASE_URL?.startsWith('https://')) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['S3_PUBLIC_BASE_URL'], message: 'S3_PUBLIC_BASE_URL must use https:// in production' });
+  }
+  if (config.S3_ENDPOINT && !config.S3_ENDPOINT.startsWith('https://')) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['S3_ENDPOINT'], message: 'S3_ENDPOINT must use https:// in production' });
+  }
+
   if (!config.LIVEKIT_URL.startsWith('wss://')) {
     context.addIssue({
       code: z.ZodIssueCode.custom,

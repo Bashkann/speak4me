@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Socket } from 'socket.io-client';
 import type { Conversation, Message, MessageHistory } from '../api/chat';
@@ -15,14 +15,12 @@ const ChatRealtimeContext = createContext<ChatRealtimeValue>({ socket: null, onl
 
 export function ChatRealtimeProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
-  const socketRef = useRef<Socket | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [online, setOnline] = useState<ReadonlyMap<string, boolean>>(new Map());
   const [typing, setTyping] = useState<ReadonlyMap<string, string>>(new Map());
 
   useEffect(() => {
     const next = createSocket('/chat');
-    socketRef.current = next;
     setSocket(next);
 
     next.on('message_new', ({ conversationId, message }: { conversationId: string; message: Message }) => {
@@ -56,7 +54,6 @@ export function ChatRealtimeProvider({ children }: PropsWithChildren) {
     });
     return () => {
       next.disconnect();
-      socketRef.current = null;
       setSocket(null);
     };
   }, [queryClient]);

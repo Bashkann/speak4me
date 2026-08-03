@@ -6,13 +6,8 @@ import { getConversations } from '../api/chat';
 import { useAuthStore } from '../store/auth-store';
 import { Brand } from './Brand';
 import { ThemeToggle } from './ThemeToggle';
-import { ChatRealtimeProvider } from './ChatRealtimeProvider';
 
 export function AppShell() {
-  return <ChatRealtimeProvider><AppShellContent /></ChatRealtimeProvider>;
-}
-
-function AppShellContent() {
   const user = useAuthStore((state) => state.user);
   const location = useLocation();
   const refreshToken = useAuthStore((state) => state.refreshToken);

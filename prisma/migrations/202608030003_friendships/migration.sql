@@ -2,7 +2,7 @@
 ALTER TABLE "User" ADD COLUMN "handle" VARCHAR(32);
 
 UPDATE "User"
-SET "handle" = 'speaker_' || left(replace("id", '-', ''), 12)
+SET "handle" = 'speaker_' || left(replace("id", '-', ''), 24)
 WHERE "handle" IS NULL;
 
 ALTER TABLE "User" ALTER COLUMN "handle" SET NOT NULL;

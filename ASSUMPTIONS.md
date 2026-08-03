@@ -1,5 +1,19 @@
 # Frontend assumptions and backend compatibility
 
+## Friends and direct-message decisions
+
+- Registration derives a public, unique handle from the display name plus a random suffix. Existing accounts receive a non-email, ID-derived handle in the migration; changing handles is intentionally not part of this release.
+- An unordered user pair is represented by a canonical sorted `pairKey`. `requesterId` and `addresseeId` preserve request direction while pending; for `BLOCKED`, `requesterId` is the blocker. Only the blocker can remove that block.
+- One friendship record exists per pair. Blocking replaces any pending or accepted relationship, and unblocking removes the relationship entirely rather than restoring a previous friendship.
+- User discovery returns only id, handle, display name, and relationship state. Emails remain available only in the authenticated user's own account payload and administrator views.
+- A conversation is also unique per canonical pair. Existing history remains stored, but REST history, sends, read updates, typing, and realtime delivery require an accepted, unblocked friendship at the time of the action. Removing or blocking a friend makes that conversation unavailable until a new friendship is accepted.
+- Message bodies are stored as plain text after Unicode normalization, trimming, control-character removal, and a 2,000-character cap. The React client renders them as text and never injects message HTML.
+- Chat presence is process-local and represents active authenticated `/chat` socket connections. The app keeps that namespace connected even while a learner is inside a LiveKit room. The existing single-API-instance production requirement therefore also applies to friend presence.
+- `POST /api/conversations/:id/messages` accepts either an existing conversation id or an accepted friend's user id; the latter creates the canonical conversation on the first message. The explicit `POST /api/conversations` route is used by the frontend when opening an empty chat.
+- Images are off by default and never use local disk. Enabling them requires complete server-only S3-compatible configuration. A signed upload records an expiring, user-owned, single-use grant; sending a message references that grant id, so clients cannot persist an arbitrary image URL.
+- Browser-side file checks improve feedback, but the server remains authoritative for allowed MIME types, configured maximum size, grant ownership, expiration, and one-time consumption. Bucket CORS and the signed content length provide the storage-side boundary.
+- The responsive Messages view uses separate routes for the conversation list and selected chat. At the mobile breakpoint the selected chat hides the bottom navigation so the safe-area-aware composer remains above the keyboard.
+
 ## Mechanic v2 decisions
 
 - A matchmaking batch is not a persistent gameplay container. Four compatible queue entries are shuffled and committed as two ordinary `Room` records in one transaction; from that point onward the rooms are independent.

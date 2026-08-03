@@ -5,6 +5,9 @@ import { englishLevelSchema, errorSchema, idParamsSchema, paginationSchema } fro
 import { updateMeSchema } from './schemas/me';
 import { createRoomSchema, joinRoomSchema, reportSchema } from './schemas/rooms';
 import { adminCreateTopicSchema, adminUpdateReportSchema, adminUpdateTopicSchema, adminUpdateUserSchema, adminUsersQuerySchema } from './schemas/admin';
+import { conversationParamsSchema, messageHistorySchema, openConversationSchema, sendMessageSchema } from './schemas/chat';
+import { friendRequestParamsSchema, friendUserParamsSchema, userSearchSchema, userTargetSchema } from './schemas/social';
+import { signUploadSchema } from './schemas/uploads';
 
 extendZodWithOpenApi(z);
 
@@ -29,7 +32,7 @@ const tokensSchema = z.object({ accessToken: z.string(), refreshToken: z.string(
 registry.registerPath({
   method: 'post', path: '/api/auth/register', tags: ['Auth'], summary: 'Register a user',
   request: { body: { content: { 'application/json': { schema: registerSchema } } } },
-  responses: { 201: json(tokensSchema.extend({ user: z.object({ id: z.string().uuid(), email: z.string().email(), displayName: z.string(), englishLevel: englishLevelSchema }) })), ...errors },
+  responses: { 201: json(tokensSchema.extend({ user: z.object({ id: z.string().uuid(), email: z.string().email(), handle: z.string(), displayName: z.string(), englishLevel: englishLevelSchema }) })), ...errors },
 });
 registry.registerPath({
   method: 'post', path: '/api/auth/login', tags: ['Auth'], summary: 'Log in',
@@ -48,7 +51,7 @@ registry.registerPath({
 });
 
 const userSchema = z.object({
-  id: z.string().uuid(), email: z.string().email(), displayName: z.string(), englishLevel: englishLevelSchema,
+  id: z.string().uuid(), email: z.string().email(), handle: z.string(), displayName: z.string(), englishLevel: englishLevelSchema,
   nativeLanguage: z.string().nullable(), goals: z.array(z.string()), interests: z.array(z.string()), role: z.enum(['USER', 'ADMIN']), createdAt: z.string().datetime(),
 });
 registry.registerPath({ method: 'get', path: '/api/me', tags: ['Me'], security, responses: { 200: json(userSchema), ...errors } });
@@ -84,7 +87,7 @@ for (const route of [
 }
 
 const participantSchema = z.object({
-  userId: z.string().uuid(), displayName: z.string(), englishLevel: englishLevelSchema, seat: z.number().int(), pair: z.enum(['A', 'B']), connected: z.boolean(),
+  userId: z.string().uuid(), handle: z.string(), displayName: z.string(), englishLevel: englishLevelSchema, seat: z.number().int(), pair: z.enum(['A', 'B']), connected: z.boolean(),
 });
 const topicOfferSchema = z.object({ id: z.string().uuid(), textEn: z.string() });
 const activeRoundSchema = z.object({
@@ -121,6 +124,29 @@ registry.registerPath({
 registry.registerPath({ method: 'get', path: '/api/rooms/{id}', tags: ['Rooms'], security, request: { params: idParamsSchema }, responses: { 200: json(roomSchema), ...errors, 404: json(errorSchema, 'Not found') } });
 registry.registerPath({ method: 'post', path: '/api/rooms/{id}/leave', tags: ['Rooms'], security, request: { params: idParamsSchema }, responses: { 204: { description: 'Left room' }, ...errors } });
 registry.registerPath({ method: 'post', path: '/api/rooms/{id}/voice-token', tags: ['Voice'], security, request: { params: idParamsSchema }, responses: { 200: json(z.object({ token: z.string(), url: z.string().url(), canPublish: z.boolean() })), ...errors } });
+
+const publicProfileSchema = z.object({ id: z.string().uuid(), handle: z.string(), displayName: z.string() });
+const messageSchema = z.object({
+  id: z.string().uuid(), conversationId: z.string().uuid(), senderId: z.string().uuid(), body: z.string(),
+  imageUrl: z.string().url().nullable(), createdAt: z.string().datetime(), readAt: z.string().datetime().nullable(),
+});
+registry.registerPath({ method: 'get', path: '/api/friends', tags: ['Friends'], security, responses: { 200: json(z.array(publicProfileSchema.extend({ friendshipId: z.string().uuid(), online: z.boolean() }))), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/friends/requests', tags: ['Friends'], security, responses: { 200: json(z.object({ incoming: z.array(z.unknown()), outgoing: z.array(z.unknown()) })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/friends/request', tags: ['Friends'], security, request: { body: { content: { 'application/json': { schema: userTargetSchema } } } }, responses: { 201: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/friends/requests/{id}/accept', tags: ['Friends'], security, request: { params: friendRequestParamsSchema }, responses: { 200: json(z.object({ status: z.literal('ACCEPTED') })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/friends/requests/{id}/decline', tags: ['Friends'], security, request: { params: friendRequestParamsSchema }, responses: { 204: { description: 'Request declined' }, ...errors } });
+registry.registerPath({ method: 'delete', path: '/api/friends/{userId}', tags: ['Friends'], security, request: { params: friendUserParamsSchema }, responses: { 204: { description: 'Friend removed' }, ...errors } });
+registry.registerPath({ method: 'post', path: '/api/friends/block', tags: ['Friends'], security, request: { body: { content: { 'application/json': { schema: userTargetSchema } } } }, responses: { 200: json(z.object({ status: z.literal('BLOCKED') })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/friends/unblock', tags: ['Friends'], security, request: { body: { content: { 'application/json': { schema: userTargetSchema } } } }, responses: { 204: { description: 'Block removed' }, ...errors } });
+registry.registerPath({ method: 'get', path: '/api/users/search', tags: ['Friends'], security, request: { query: userSearchSchema }, responses: { 200: json(z.array(publicProfileSchema.extend({ relationship: z.enum(['NONE', 'FRIEND', 'OUTGOING', 'INCOMING', 'BLOCKED']) }))), ...errors } });
+
+registry.registerPath({ method: 'get', path: '/api/conversations', tags: ['Chat'], security, responses: { 200: json(z.array(z.object({ id: z.string().uuid(), partner: publicProfileSchema, lastMessage: messageSchema.nullable(), unreadCount: z.number().int(), updatedAt: z.string().datetime() }))), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/conversations', tags: ['Chat'], security, request: { body: { content: { 'application/json': { schema: openConversationSchema } } } }, responses: { 201: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/conversations/{id}/messages', tags: ['Chat'], security, request: { params: conversationParamsSchema, query: messageHistorySchema }, responses: { 200: json(z.object({ items: z.array(messageSchema), nextBefore: z.string().datetime().nullable() })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/conversations/{id}/messages', tags: ['Chat'], security, request: { params: conversationParamsSchema, body: { content: { 'application/json': { schema: sendMessageSchema } } } }, responses: { 201: json(messageSchema), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/conversations/{id}/read', tags: ['Chat'], security, request: { params: conversationParamsSchema }, responses: { 200: json(z.unknown()), ...errors } });
+registry.registerPath({ method: 'get', path: '/api/uploads/config', tags: ['Chat'], security, responses: { 200: json(z.object({ enabled: z.boolean(), maxBytes: z.number().int(), contentTypes: z.array(z.string()) })), ...errors } });
+registry.registerPath({ method: 'post', path: '/api/uploads/sign', tags: ['Chat'], security, request: { body: { content: { 'application/json': { schema: signUploadSchema } } } }, responses: { 201: json(z.object({ uploadId: z.string().uuid(), uploadUrl: z.string().url(), publicUrl: z.string().url(), expiresAt: z.string().datetime(), headers: z.record(z.string()) })), ...errors } });
 registry.registerPath({
   method: 'post', path: '/api/reports', tags: ['Reports'], security,
   request: { body: { content: { 'application/json': { schema: reportSchema } } } },
