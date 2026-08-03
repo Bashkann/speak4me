@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ensureQueued, getMatchmakingStatus, leaveQueue } from '../api/matchmaking';
@@ -10,6 +10,7 @@ import { useToastStore } from '../store/toast-store';
 import { Skeleton } from '../components/LoadingSkeleton';
 
 export function WaitingPage() {
+  const reducedMotion = useReducedMotion();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -102,14 +103,14 @@ export function WaitingPage() {
         ) : (
           <>
             <div className="relative mx-auto h-48 w-48" aria-hidden="true">
-              <motion.span className="absolute inset-5 rounded-full border border-brand-300/60" animate={{ scale: [0.92, 1.08, 0.92], opacity: [0.35, 0.8, 0.35] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
-              <motion.div className="absolute inset-0" animate={{ rotate: 360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>
+              <motion.span className="absolute inset-5 rounded-full border border-brand-300/60" animate={reducedMotion ? { opacity: 0.55 } : { scale: [0.92, 1.08, 0.92], opacity: [0.35, 0.8, 0.35] }} transition={{ duration: 2.4, repeat: reducedMotion ? 0 : Infinity, ease: 'easeInOut' }} />
+              <motion.div className="absolute inset-0" animate={reducedMotion ? undefined : { rotate: 360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>
                 {['A', 'B', 'C', 'D'].map((label, index) => {
                   const positions = ['left-1/2 top-0 -translate-x-1/2', 'right-0 top-1/2 -translate-y-1/2', 'bottom-0 left-1/2 -translate-x-1/2', 'left-0 top-1/2 -translate-y-1/2'];
-                  return <motion.span key={label} className={`absolute grid h-10 w-10 place-items-center rounded-full border-2 border-white bg-brand-100 font-display text-xs font-extrabold text-brand-800 shadow-md ${positions[index]}`} animate={{ rotate: -360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>{label}</motion.span>;
+                  return <motion.span key={label} className={`absolute grid h-10 w-10 place-items-center rounded-full border-2 border-white bg-brand-100 font-display text-xs font-extrabold text-brand-800 shadow-md ${positions[index]}`} animate={reducedMotion ? undefined : { rotate: -360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>{label}</motion.span>;
                 })}
               </motion.div>
-              <motion.span className="absolute inset-12 grid place-items-center rounded-full bg-ink shadow-xl" animate={{ scale: [1, 1.045, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}>
+              <motion.span className="absolute inset-12 grid place-items-center rounded-full bg-ink shadow-xl" animate={reducedMotion ? undefined : { scale: [1, 1.045, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}>
                 <svg className="h-10 w-10 text-brand-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 9v6M12 6v12M16 9v6M5 12h14" strokeLinecap="round" /></svg>
               </motion.span>
             </div>

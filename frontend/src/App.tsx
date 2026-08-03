@@ -11,9 +11,10 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ToastViewport } from './components/ToastViewport';
 import { PageTransition } from './components/PageTransition';
 import { RequireAdmin } from './components/RequireAdmin';
-import { AdminPage } from './pages/AdminPage';
+import { PanelSkeleton } from './components/LoadingSkeleton';
 
 const RoomPage = lazy(() => import('./pages/RoomPage').then((module) => ({ default: module.RoomPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
 
 export function App() {
   return (
@@ -30,7 +31,7 @@ export function App() {
             <Route path="/history" element={<PageTransition><HistoryPage /></PageTransition>} />
             <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
             <Route element={<RequireAdmin />}>
-              <Route path="/admin" element={<PageTransition><AdminPage /></PageTransition>} />
+              <Route path="/admin" element={<PageTransition><Suspense fallback={<div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12"><PanelSkeleton rows={5} /></div>}><AdminPage /></Suspense></PageTransition>} />
             </Route>
             <Route path="/waiting" element={<PageTransition><WaitingPage /></PageTransition>} />
           </Route>

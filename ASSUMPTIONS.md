@@ -19,5 +19,11 @@ The existing backend implementation and its served OpenAPI document are the inte
 - Socket authentication failures use the same deduplicated refresh-token rotation as REST requests, then explicitly reconnect with the new access token. A refresh failure clears the tab-scoped session.
 - Docker uses the internal `LIVEKIT_URL` for API-to-LiveKit RPC and `LIVEKIT_PUBLIC_URL` for the browser URL returned by the voice-token endpoint. Local non-Docker development can omit the public override.
 - Local LiveKit advertises `127.0.0.1` as its ICE node address. Without that explicit Docker development setting, the browser can receive an unreachable container address even though token creation succeeds.
+- The craft pass changes presentation only. Authentication timing, onboarding payloads, matchmaking, room state, LiveKit permissions, and every backend contract remain unchanged.
+- Ambient authentication motion is intentionally slower than interaction feedback, but it is decorative, transform-only, and completely disabled when reduced motion is requested. Interactive feedback stays within roughly 120–320 ms and never gates input.
+- Loading skeletons are visual placeholders only; existing query loading/error/data states remain authoritative. Empty-state copy does not fabricate application records.
+- Dashboard counters animate only for the first non-zero value mounted in that view. Later live refreshes update immediately instead of replaying the count-up.
+- CSS/typographic symbols are used for onboarding micro-illustrations so the pass adds no image payload or extra animation dependency.
+- The admin page is lazy-loaded because normal learners cannot reach it. The LiveKit room was already isolated as a separate route chunk and remains lazy-loaded.
 - V1 runs one API process because matchmaking presence and timer leadership are intentionally in process and Redis is out of scope.
 - React Router is kept on the current patched SPA release to address its link/navigation advisories. `npm audit` also flags an RSC action advisory in that package line; this Vite client does not enable React Server Components, server actions, SSR, or framework mode, so the affected execution path is absent.

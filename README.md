@@ -33,6 +33,8 @@ Administrators see an additional `/admin` navigation item. The panel includes co
 
 The frontend includes light, dark, and system themes, responsive desktop navigation, and a mobile bottom tab bar. At 375px the room keeps its four seats in a 2×2 grid and fixes large microphone/leave controls above the safe area.
 
+The interface also includes reduced-motion-aware micro-interactions, floating-label authentication, animated onboarding feedback, loading skeletons, friendly empty states, sliding navigation indicators, and audio-responsive room feedback. The admin route is lazy-loaded to keep it out of the normal learner path.
+
 ## Local development
 
 ```bash

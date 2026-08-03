@@ -42,6 +42,21 @@ Alternatively, `docker compose up --build` at the repository root builds and ser
 - Safe-area padding is applied for notched devices. Auth and onboarding use document flow rather than a fixed viewport panel so the on-screen keyboard does not hide the active field.
 - Motion respects the operating system’s reduced-motion preference. No action depends on an animation finishing.
 - Listeners are intentionally never prompted for microphone permission. The browser asks only when that participant becomes a speaker and enables the microphone.
+- Floating labels, inline validation, skeleton loaders, and empty states keep async and error feedback close to the affected control. Keyboard focus uses a consistent high-contrast ring.
+- Reduced-motion mode removes ambient loops, directional movement, spring transforms, count-ups, and shimmer while preserving immediate opacity feedback and every interaction.
+
+## Production bundle note
+
+Vite production output before and after the craft pass (uncompressed / gzip):
+
+| Asset | Before | After |
+| --- | ---: | ---: |
+| Main application JS | 506.58 / 163.23 kB | 510.14 / 164.86 kB |
+| Live room JS | 552.53 / 144.86 kB | 555.74 / 145.80 kB |
+| Styles | 34.85 / 6.94 kB | 43.97 / 8.23 kB |
+| Admin JS | included in main | 13.49 / 3.94 kB, lazy-loaded |
+
+The main gzip payload grew by about 1%. The admin control panel is now a separate route chunk, so normal learners never download its implementation. Framer Motion remains the only animation runtime.
 
 For a faster manual test, set short non-production timer values in the backend environment or use the fake-timer integration suite. REST room creation still enforces round lengths between 5 and 10 minutes.
 
