@@ -6,6 +6,7 @@ import { createPrivateRoom, joinPrivateRoom } from '../api/rooms';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
 import { useToastStore } from '../store/toast-store';
+import { CharacterBuddy } from '../components/character/CharacterBuddy';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export function HomePage() {
   const [createdRoom, setCreatedRoom] = useState<{ id: string; code: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [joinTouched, setJoinTouched] = useState(false);
+  const [primaryHovered, setPrimaryHovered] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: () => createPrivateRoom(roundDurationSec),
@@ -73,9 +75,12 @@ export function HomePage() {
               <h1 className="mt-5 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Good to see you, {user?.displayName?.split(' ')[0]}.</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">Choose how you want to practice today. Every room gives you one speaking round and one listening round.</p>
             </div>
-            <Link to="/history" className="inline-flex w-fit items-center gap-2 text-sm font-bold text-brand-200 transition hover:text-white">
-              View session history <span aria-hidden="true">→</span>
-            </Link>
+            <div className="flex items-end gap-4">
+              <CharacterBuddy mood={primaryHovered ? 'wave' : 'idle'} size="md" className="-mb-3" />
+              <Link to="/history" className="mb-1 inline-flex w-fit items-center gap-2 text-sm font-bold text-brand-200 transition hover:text-white">
+                View session history <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -87,7 +92,7 @@ export function HomePage() {
             <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Matchmaking</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold text-ink">Find a speaking room</h2>
             <p className="mt-3 min-h-12 text-sm leading-6 text-slate-500">We’ll gather four compatible learners, then split everyone into two focused conversation pairs.</p>
-            <motion.button whileTap={{ scale: reducedMotion ? 1 : 0.98 }} type="button" className="primary-button mt-7 w-full" onClick={() => navigate('/waiting')}>Find a partner <motion.span aria-hidden="true" className="inline-block" animate={reducedMotion ? undefined : { x: [0, 3, 0] }} transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 1.5 }}>→</motion.span></motion.button>
+            <motion.button whileTap={{ scale: reducedMotion ? 1 : 0.98 }} type="button" className="primary-button mt-7 w-full" onHoverStart={() => setPrimaryHovered(true)} onHoverEnd={() => setPrimaryHovered(false)} onFocus={() => setPrimaryHovered(true)} onBlur={() => setPrimaryHovered(false)} onClick={() => navigate('/waiting')}>Find a partner <motion.span aria-hidden="true" className="inline-block" animate={reducedMotion ? undefined : { x: [0, 3, 0] }} transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 1.5 }}>→</motion.span></motion.button>
             <p className="mt-3 text-center text-xs text-slate-400">Usually takes less than two minutes</p>
           </motion.article>
 

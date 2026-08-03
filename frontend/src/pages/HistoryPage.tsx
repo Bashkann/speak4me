@@ -26,7 +26,7 @@ export function HistoryPage() {
         {query.isLoading && <div className="mt-8 space-y-3" aria-label="Loading session history">{[1, 2, 3].map((item) => <div key={item} className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex gap-4"><Skeleton className="h-11 w-11 shrink-0" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-3 w-1/5" /></div></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div>}
         {query.isError && <div role="alert" className="mt-8 rounded-2xl border border-red-100 bg-red-50 p-5 text-sm font-semibold text-red-700">{getApiErrorMessage(query.error, 'Could not load your history.')}</div>}
         {query.data?.items.length === 0 && (
-          <div className="mt-8"><EmptyState icon="💬" title="No finished sessions yet" detail="Complete both rounds in a room and your conversation will appear here." /></div>
+          <div className="mt-8"><EmptyState icon="💬" mood="encouraging" title="Let’s do your first session" detail="Complete both rounds in a room and your conversation will appear here." /></div>
         )}
         {query.data && query.data.items.length > 0 && (
           <div className={`mt-8 space-y-3 transition ${query.isFetching ? 'opacity-60' : ''}`}>

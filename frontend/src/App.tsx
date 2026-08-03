@@ -12,6 +12,7 @@ import { ToastViewport } from './components/ToastViewport';
 import { PageTransition } from './components/PageTransition';
 import { RequireAdmin } from './components/RequireAdmin';
 import { PanelSkeleton } from './components/LoadingSkeleton';
+import { FullPageLoader } from './components/FullPageLoader';
 
 const RoomPage = lazy(() => import('./pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
@@ -25,7 +26,7 @@ export function App() {
           <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route path="/rooms/:roomId" element={<Suspense fallback={<div className="grid min-h-screen place-items-center bg-canvas text-sm font-semibold text-slate-500">Loading room…</div>}><RoomPage /></Suspense>} />
+          <Route path="/rooms/:roomId" element={<Suspense fallback={<FullPageLoader label="Opening your room…" />}><RoomPage /></Suspense>} />
           <Route element={<AppShell />}>
             <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
             <Route path="/history" element={<PageTransition><HistoryPage /></PageTransition>} />
