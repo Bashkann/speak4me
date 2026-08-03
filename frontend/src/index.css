@@ -83,6 +83,17 @@
     @apply h-4 w-4 rounded-full border-2 border-current border-r-transparent;
     animation: spin 700ms linear infinite;
   }
+
+  .character-buddy {
+    --buddy-body: #22a36f;
+    --buddy-accent: #16835a;
+    --buddy-belly: #d6f5e6;
+    --buddy-ink: #10211c;
+    --buddy-shadow: #10211c;
+    --buddy-spark: #fbbf24;
+    --buddy-prop: #f59e0b;
+    contain: layout paint;
+  }
 }
 
 @layer utilities {
@@ -124,6 +135,15 @@
   .dark .bg-sky-50 { background-color: #102f34; }
   .dark .field { border-color: #315043; background-color: #10201a; color: #eff8f3; }
   .dark .secondary-button { border-color: #315043; background-color: #10201a; color: #dce9e2; }
+  .dark .character-buddy {
+    --buddy-body: #43bf89;
+    --buddy-accent: #22a36f;
+    --buddy-belly: #174533;
+    --buddy-ink: #09130f;
+    --buddy-shadow: #000;
+    --buddy-spark: #fcd34d;
+    --buddy-prop: #fbbf24;
+  }
 
   .skeleton {
     position: relative;
