@@ -19,7 +19,7 @@ describe('AuthPage', () => {
 
   it('submits the backend-compatible registration shape and stores the session', async () => {
     authMocks.register.mockResolvedValue({
-      user: { id: 'user-1', email: 'learner@example.com', displayName: 'Test Learner', englishLevel: 'B2', nativeLanguage: 'Turkish', goals: ['travel'], interests: ['technology'], role: 'USER' },
+      user: { id: 'user-1', email: 'learner@example.com', handle: 'test_learner', displayName: 'Test Learner', englishLevel: 'B2', nativeLanguage: 'Turkish', goals: ['travel'], interests: ['technology'], role: 'USER' },
       accessToken: 'access-token', refreshToken: 'refresh-token',
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });

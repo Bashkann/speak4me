@@ -58,7 +58,7 @@ export function ProfilePage() {
           <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
             <div className="flex items-center gap-5">
               <motion.span initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="grid h-20 w-20 place-items-center rounded-3xl bg-brand-500 font-display text-2xl font-extrabold shadow-glow">{initials(user.displayName)}</motion.span>
-              <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-200">Your profile</p><h1 className="mt-2 font-display text-3xl font-extrabold sm:text-4xl">{user.displayName}</h1><p className="mt-1 text-sm text-slate-300">{user.email} · Level {user.englishLevel}</p></div>
+              <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-200">Your profile</p><h1 className="mt-2 font-display text-3xl font-extrabold sm:text-4xl">{user.displayName}</h1><p className="mt-1 text-sm text-slate-300">@{user.handle} · Level {user.englishLevel}</p><p className="mt-1 text-xs text-slate-400">{user.email} is private</p></div>
             </div>
             <button type="button" onClick={() => setEditing((value) => !value)} className="rounded-xl bg-white/10 px-4 py-3 text-sm font-bold ring-1 ring-white/15 transition hover:bg-white/15">{editing ? 'Cancel editing' : 'Edit profile'}</button>
           </div>

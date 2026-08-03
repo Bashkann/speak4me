@@ -5,6 +5,7 @@ export type Pair = 'A' | 'B';
 
 export interface RoomParticipant {
   userId: string;
+  handle: string;
   displayName: string;
   englishLevel: EnglishLevel;
   seat: number;
@@ -54,7 +55,7 @@ export interface SessionHistoryItem {
   date: string;
   durationSec: number;
   topics: string[];
-  partners: string[];
+  partners: Array<{ id: string; handle: string; displayName: string }>;
 }
 
 export interface SessionHistoryResponse {

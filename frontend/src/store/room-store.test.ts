@@ -6,8 +6,8 @@ const waitingRoom: RoomSnapshot = {
   id: 'room-1', code: 'ABC123', type: 'matchmade', status: 'waiting', capacity: 2, roundDurationSec: 420,
   currentRound: null, roundEndsAt: null, currentTopic: null, activeRound: null,
   participants: [
-    { userId: 'user-a', displayName: 'A User', englishLevel: 'B1', seat: 1, pair: 'A', connected: true },
-    { userId: 'user-b', displayName: 'B User', englishLevel: 'B1', seat: 2, pair: 'B', connected: true },
+    { userId: 'user-a', handle: 'a_user', displayName: 'A User', englishLevel: 'B1', seat: 1, pair: 'A', connected: true },
+    { userId: 'user-b', handle: 'b_user', displayName: 'B User', englishLevel: 'B1', seat: 2, pair: 'B', connected: true },
   ],
 };
 

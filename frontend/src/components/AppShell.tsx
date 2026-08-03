@@ -25,6 +25,7 @@ export function AppShell() {
           <nav className="hidden items-center gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200 sm:flex" aria-label="Main navigation">
             <NavItem to="/" label="Home" />
             <NavItem to="/history" label="History" />
+            <NavItem to="/friends" label="Friends" />
             <NavItem to="/profile" label="Profile" />
             {user?.role === 'ADMIN' && <NavItem to="/admin" label="Admin" />}
           </nav>
@@ -45,9 +46,10 @@ export function AppShell() {
         </div>
       </header>
       <Outlet />
-      <nav className={`safe-bottom fixed inset-x-3 bottom-2 z-40 grid ${user?.role === 'ADMIN' ? 'grid-cols-4' : 'grid-cols-3'} rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden`} aria-label="Mobile navigation">
+      <nav className={`safe-bottom fixed inset-x-3 bottom-2 z-40 grid ${user?.role === 'ADMIN' ? 'grid-cols-5' : 'grid-cols-4'} rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-soft backdrop-blur-xl sm:hidden`} aria-label="Mobile navigation">
         <MobileNavItem to="/" label="Home" icon="⌂" />
         <MobileNavItem to="/history" label="History" icon="◷" />
+        <MobileNavItem to="/friends" label="Friends" icon="♧" />
         <MobileNavItem to="/profile" label="Profile" icon="◎" />
         {user?.role === 'ADMIN' && <MobileNavItem to="/admin" label="Admin" icon="◇" />}
       </nav>
