@@ -30,7 +30,7 @@ function BuddySvg({ pose, prop, animate, wave, scan }: { pose: CharacterPose; pr
   const happy = pose === 'happy' || pose === 'celebrating';
   return (
     <motion.svg className="relative z-10 h-full w-full overflow-visible" viewBox="0 0 160 160" fill="none" focusable="false" initial={false}>
-      <motion.ellipse cx="80" cy="140" rx="38" ry="8" fill="var(--buddy-shadow)" animate={animate ? { opacity: [0.13, 0.2, 0.13], scaleX: [1, 0.9, 1] } : { opacity: 0.16, scaleX: 1 }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.ellipse cx="80" cy="140" rx="38" ry="8" fill="var(--buddy-shadow)" opacity="0.16" animate={animate ? { opacity: [0.13, 0.2, 0.13], scaleX: [1, 0.9, 1] } : { opacity: 0.16, scaleX: 1 }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
       <motion.g animate={scan && animate ? { x: [-3, 3, -3] } : { x: 0 }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
         <path d="M46 54c-11-6-17-1-15 9 1 7 7 11 15 10" fill="var(--buddy-accent)" />
         <path d="M114 54c11-6 17-1 15 9-1 7-7 11-15 10" fill="var(--buddy-accent)" />

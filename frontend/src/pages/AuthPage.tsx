@@ -10,6 +10,8 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { OnboardingWizard } from '../components/OnboardingWizard';
 import { FloatingField } from '../components/FloatingField';
 import type { AuthResponse } from '../types/api';
+import { CharacterBuddy } from '../components/character/CharacterBuddy';
+import type { CharacterMood } from '../components/character/character-registry';
 
 type AuthMode = 'login' | 'register';
 
@@ -23,6 +25,7 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginErrors, setLoginErrors] = useState<{ email?: string; password?: string }>({});
   const [authComplete, setAuthComplete] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const redirectTimer = useRef<number | null>(null);
 
   const mutation = useMutation({
@@ -53,8 +56,17 @@ export function AuthPage() {
     mutation.reset();
     setLoginErrors({});
     setAuthComplete(false);
+    setPasswordFocused(false);
     setMode(nextMode);
   };
+
+  const loginMood: CharacterMood = authComplete
+    ? 'happy'
+    : mutation.isError || Boolean(loginErrors.email || loginErrors.password)
+      ? 'error'
+      : passwordFocused
+        ? 'peek'
+        : 'wave';
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-canvas px-4 py-5 sm:px-6 lg:px-8">
@@ -89,13 +101,18 @@ export function AuthPage() {
         <section className="flex items-center justify-center px-5 py-10 sm:px-12 lg:px-16">
           <div className="w-full max-w-md">
             <div className="mb-10 lg:hidden"><Brand /></div>
-            <p className="text-sm font-bold text-brand-700">Welcome to Speak Four</p>
-            <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-              {mode === 'login' ? 'Ready to speak?' : 'Create your account'}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              {mode === 'login' ? 'Sign in and find your next speaking room.' : 'Pick your current English level. You can change it later.'}
-            </p>
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-brand-700">Welcome to Speak Four</p>
+                <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+                  {mode === 'login' ? 'Ready to speak?' : 'Create your account'}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-500">
+                  {mode === 'login' ? 'Sign in and find your next speaking room.' : 'Pick your current English level. You can change it later.'}
+                </p>
+              </div>
+              {mode === 'login' && <CharacterBuddy mood={loginMood} size="sm" className="-mb-2" />}
+            </div>
 
             <div className="relative mt-8 grid grid-cols-2 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Authentication mode">
               {(['login', 'register'] as const).map((tab) => (
@@ -113,7 +130,7 @@ export function AuthPage() {
                     <FloatingField id="email" label="Email address" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setLoginErrors((current) => ({ ...current, email: undefined })); mutation.reset(); }} error={loginErrors.email} />
                   </motion.div>
                   <motion.div animate={loginErrors.password ? { x: [0, -5, 4, -3, 0] } : { x: 0 }} transition={{ duration: reducedMotion ? 0 : 0.28 }}>
-                    <FloatingField id="password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(event) => { setPassword(event.target.value); setLoginErrors((current) => ({ ...current, password: undefined })); mutation.reset(); }} error={loginErrors.password} endAdornment={<motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => setShowPassword((value) => !value)} className="min-w-14 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}><AnimatePresence mode="wait" initial={false}><motion.span key={showPassword ? 'hide' : 'show'} initial={{ opacity: 0, y: reducedMotion ? 0 : 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -3 }} transition={{ duration: 0.12 }}>{showPassword ? 'Hide' : 'Show'}</motion.span></AnimatePresence></motion.button>} />
+                    <FloatingField id="password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)} onChange={(event) => { setPassword(event.target.value); setLoginErrors((current) => ({ ...current, password: undefined })); mutation.reset(); }} error={loginErrors.password} endAdornment={<motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => setShowPassword((value) => !value)} className="min-w-14 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}><AnimatePresence mode="wait" initial={false}><motion.span key={showPassword ? 'hide' : 'show'} initial={{ opacity: 0, y: reducedMotion ? 0 : 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -3 }} transition={{ duration: 0.12 }}>{showPassword ? 'Hide' : 'Show'}</motion.span></AnimatePresence></motion.button>} />
                   </motion.div>
                   <div className="min-h-[3.6rem] pt-1">
                     <AnimatePresence initial={false}>{mutation.isError && <motion.div role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{getApiErrorMessage(mutation.error, 'Unable to sign in.')}</motion.div>}</AnimatePresence>

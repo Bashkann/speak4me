@@ -5,6 +5,8 @@ import { register, type RegisterInput } from '../api/auth';
 import { getApiErrorMessage } from '../lib/api-error';
 import type { AuthResponse, EnglishLevel } from '../types/api';
 import { FloatingField } from './FloatingField';
+import { CharacterBuddy } from './character/CharacterBuddy';
+import type { CharacterMood, CharacterProp } from './character/character-registry';
 
 const goals = [
   ['exam-prep', 'Exam prep', 'IELTS, TOEFL or YDS'],
@@ -41,6 +43,7 @@ export function OnboardingWizard({ onSuccess }: { onSuccess: (session: AuthRespo
   const [direction, setDirection] = useState(1);
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [languageSearch, setLanguageSearch] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const mutation = useMutation({ mutationFn: () => register(draft), onSuccess });
   const filteredLanguages = useMemo(() => languages.filter((language) => language.toLowerCase().includes(languageSearch.toLowerCase())), [languageSearch]);
   const titles = ['Your account', 'Why are you here?', 'Choose your level', 'Native language', 'Conversation interests', 'Review your profile'];
@@ -52,6 +55,24 @@ export function OnboardingWizard({ onSuccess }: { onSuccess: (session: AuthRespo
     draft.interests.length > 0,
     true,
   ][step];
+  const accountCompleteCount = [draft.displayName.trim().length >= 2, /\S+@\S+\.\S+/.test(draft.email), draft.password.length >= 8].filter(Boolean).length;
+  const selectedGoal = draft.goals.at(-1);
+  const buddyMood: CharacterMood = mutation.isError
+    ? 'error'
+    : mutation.isPending || mutation.isSuccess
+      ? 'celebrating'
+      : step === 0
+        ? passwordFocused ? 'peek' : accountCompleteCount > 0 ? 'encouraging' : 'thinking'
+        : step === 1
+          ? selectedGoal ? 'happy' : 'thinking'
+          : step === 2
+            ? 'encouraging'
+            : step === 3
+              ? draft.nativeLanguage ? 'happy' : 'thinking'
+              : step === 4
+                ? draft.interests.length > 0 ? 'excited' : 'thinking'
+                : 'celebrating';
+  const buddyProp = selectedGoal ? goalBuddyProp(selectedGoal) : undefined;
 
   const go = (next: number) => {
     setDirection(next > step ? 1 : -1);
@@ -64,15 +85,18 @@ export function OnboardingWizard({ onSuccess }: { onSuccess: (session: AuthRespo
       <div className="mb-6 flex items-center gap-2" aria-label={`Step ${step + 1} of ${titles.length}`}>
         {titles.map((title, index) => <span key={title} className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200"><motion.span className="block h-full origin-left rounded-full bg-brand-500" initial={false} animate={{ scaleX: index <= step ? 1 : 0 }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 440, damping: 38 }} /></span>)}
       </div>
-      <div className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Step {step + 1} of {titles.length}</p>
-        <h3 className="mt-2 font-display text-2xl font-extrabold text-ink">{titles[step]}</h3>
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Step {step + 1} of {titles.length}</p>
+          <h3 className="mt-2 font-display text-2xl font-extrabold text-ink">{titles[step]}</h3>
+        </div>
+        <CharacterBuddy mood={buddyMood} prop={step === 1 ? buddyProp : undefined} size="sm" className="-mb-2" />
       </div>
 
       <div className="min-h-[21rem] overflow-hidden sm:min-h-[23rem]">
         <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div key={step} custom={direction} variants={{ enter: (value: number) => ({ opacity: 0, x: reducedMotion ? 0 : value * 24 }), center: { opacity: 1, x: 0 }, exit: (value: number) => ({ opacity: 0, x: reducedMotion ? 0 : value * -16 }) }} initial="enter" animate="center" exit="exit" transition={{ duration: reducedMotion ? 0.08 : 0.2 }}>
-            {step === 0 && <AccountStep draft={draft} setDraft={setDraft} reducedMotion={Boolean(reducedMotion)} />}
+            {step === 0 && <AccountStep draft={draft} setDraft={setDraft} reducedMotion={Boolean(reducedMotion)} onPasswordFocus={setPasswordFocused} />}
             {step === 1 && <ChoiceCards options={goals} selected={draft.goals} onToggle={(value) => setDraft((current) => ({ ...current, goals: toggle(current.goals, value) }))} reducedMotion={Boolean(reducedMotion)} />}
             {step === 2 && <LevelStep value={draft.englishLevel} onChange={(englishLevel) => setDraft((current) => ({ ...current, englishLevel }))} reducedMotion={Boolean(reducedMotion)} />}
             {step === 3 && <LanguageStep search={languageSearch} setSearch={setLanguageSearch} filtered={filteredLanguages} value={draft.nativeLanguage} onChange={(nativeLanguage) => setDraft((current) => ({ ...current, nativeLanguage }))} reducedMotion={Boolean(reducedMotion)} />}
@@ -93,10 +117,10 @@ export function OnboardingWizard({ onSuccess }: { onSuccess: (session: AuthRespo
   );
 }
 
-function AccountStep({ draft, setDraft, reducedMotion }: { draft: Draft; setDraft: React.Dispatch<React.SetStateAction<Draft>>; reducedMotion: boolean }) {
+function AccountStep({ draft, setDraft, reducedMotion, onPasswordFocus }: { draft: Draft; setDraft: React.Dispatch<React.SetStateAction<Draft>>; reducedMotion: boolean; onPasswordFocus: (focused: boolean) => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const completeCount = [draft.displayName.trim().length >= 2, /\S+@\S+\.\S+/.test(draft.email), draft.password.length >= 8].filter(Boolean).length;
-  return <div><div className="mb-3 flex items-center gap-3 rounded-2xl bg-brand-50 px-3 py-2.5"><motion.div aria-hidden="true" className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-600 shadow-sm" animate={{ rotate: reducedMotion ? 0 : completeCount === 3 ? [0, -5, 5, 0] : 0, scale: 1 + completeCount * 0.025 }} transition={{ duration: 0.28 }}><span className="flex gap-1.5"><motion.span className="h-1.5 w-1.5 rounded-full bg-white" animate={reducedMotion ? undefined : { scaleY: [1, 0.12, 1] }} transition={{ duration: 0.16, repeat: Infinity, repeatDelay: 3.2 }} /><motion.span className="h-1.5 w-1.5 rounded-full bg-white" animate={reducedMotion ? undefined : { scaleY: [1, 0.12, 1] }} transition={{ duration: 0.16, repeat: Infinity, repeatDelay: 3.2 }} /></span><span className="absolute bottom-2.5 h-1 w-3 rounded-b-full border-b-2 border-white" /></motion.div><div><p className="text-xs font-extrabold text-brand-800">Your room avatar is waking up</p><p className="mt-0.5 text-[11px] text-brand-700">{completeCount} of 3 account details ready</p></div></div><div className="space-y-0"><FloatingField id="onboarding-name" label="Display name" autoComplete="name" value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} /><FloatingField id="onboarding-email" label="Email address" type="email" autoComplete="email" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} /><FloatingField id="onboarding-password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={8} value={draft.password} onChange={(event) => setDraft((current) => ({ ...current, password: event.target.value }))} endAdornment={<button type="button" onClick={() => setShowPassword((current) => !current)} className="rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>} /></div></div>;
+  return <div><div className="mb-3 flex items-center gap-3 rounded-2xl bg-brand-50 px-3 py-2.5"><motion.span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-600 text-sm font-extrabold text-white shadow-sm" animate={{ rotate: reducedMotion ? 0 : completeCount === 3 ? [0, -5, 5, 0] : 0, scale: 1 + completeCount * 0.025 }} transition={{ duration: 0.28 }}>{completeCount}/3</motion.span><div><p className="text-xs font-extrabold text-brand-800">Your buddy is following along</p><p className="mt-0.5 text-[11px] text-brand-700">{completeCount} of 3 account details ready</p></div></div><div className="space-y-0"><FloatingField id="onboarding-name" label="Display name" autoComplete="name" value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} /><FloatingField id="onboarding-email" label="Email address" type="email" autoComplete="email" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} /><FloatingField id="onboarding-password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={8} value={draft.password} onFocus={() => onPasswordFocus(true)} onBlur={() => onPasswordFocus(false)} onChange={(event) => setDraft((current) => ({ ...current, password: event.target.value }))} endAdornment={<button type="button" onClick={() => setShowPassword((current) => !current)} className="rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>} /></div></div>;
 }
 
 function ChoiceCards({ options, selected, onToggle, reducedMotion }: { options: ReadonlyArray<readonly [string, string, string]>; selected: string[]; onToggle: (value: string) => void; reducedMotion: boolean }) {
@@ -132,3 +156,10 @@ function goalIconAnimation(value: string) {
 }
 function toggle(values: string[], value: string): string[] { return values.includes(value) ? values.filter((item) => item !== value) : [...values, value]; }
 function labelize(value: string): string { return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+function goalBuddyProp(value: string): CharacterProp {
+  if (value === 'travel') return 'travel';
+  if (value === 'exam-prep') return 'exam';
+  if (value === 'work-business') return 'work';
+  if (value === 'moving-abroad') return 'home';
+  return 'fun';
+}
