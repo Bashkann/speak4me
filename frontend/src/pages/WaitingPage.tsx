@@ -8,6 +8,7 @@ import { createSocket } from '../lib/socket';
 import { useAuthStore } from '../store/auth-store';
 import { useToastStore } from '../store/toast-store';
 import { Skeleton } from '../components/LoadingSkeleton';
+import { CharacterBuddy } from '../components/character/CharacterBuddy';
 
 interface MatchRevealPayload {
   matchId: string;
@@ -113,10 +114,10 @@ export function WaitingPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(175,234,204,0.35),transparent_48%)]" />
       <section className="relative w-full max-w-lg rounded-[2rem] border border-white bg-white/90 p-7 text-center shadow-soft backdrop-blur sm:p-10">
         {queueQuery.isLoading ? (
-          <div className="py-10" aria-label="Joining the matchmaking queue"><Skeleton className="mx-auto h-36 w-36 rounded-full" /><Skeleton className="mx-auto mt-7 h-3 w-36" /><Skeleton className="mx-auto mt-4 h-8 w-64" /><Skeleton className="mx-auto mt-4 h-4 w-72" /><p className="sr-only">Joining the queue…</p></div>
+          <div className="py-10" aria-label="Joining the matchmaking queue"><CharacterBuddy mood="loading" size="lg" className="mx-auto" /><Skeleton className="mx-auto mt-7 h-3 w-36" /><Skeleton className="mx-auto mt-4 h-8 w-64" /><Skeleton className="mx-auto mt-4 h-4 w-72" /><p className="sr-only">Joining the queue…</p></div>
         ) : queueQuery.isError ? (
           <div className="py-8">
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-2xl">!</span>
+            <CharacterBuddy mood="error" size="md" className="mx-auto" />
             <h1 className="mt-5 font-display text-2xl font-extrabold">Couldn’t start matchmaking</h1>
             <p className="mt-3 text-sm text-red-600">{getApiErrorMessage(queueQuery.error, 'Please try again.')}</p>
             <div className="mt-7 flex justify-center gap-3"><button className="secondary-button" onClick={() => navigate('/')}>Back home</button><button className="primary-button" onClick={() => void queueQuery.refetch()}>Try again</button></div>
@@ -131,9 +132,9 @@ export function WaitingPage() {
                   return <motion.span key={label} className={`absolute grid h-10 w-10 place-items-center rounded-full border-2 border-white bg-brand-100 font-display text-xs font-extrabold text-brand-800 shadow-md ${positions[index]}`} animate={reducedMotion ? undefined : { rotate: -360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>{label}</motion.span>;
                 })}
               </motion.div>
-              <motion.span className="absolute inset-12 grid place-items-center rounded-full bg-ink shadow-xl" animate={reducedMotion ? undefined : { scale: [1, 1.045, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}>
-                <svg className="h-10 w-10 text-brand-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 9v6M12 6v12M16 9v6M5 12h14" strokeLinecap="round" /></svg>
-              </motion.span>
+              <div className="absolute inset-9 grid place-items-center rounded-full bg-white/85 shadow-xl ring-1 ring-brand-100">
+                <CharacterBuddy mood="searching" size="md" />
+              </div>
             </div>
             <motion.p key={searchWidened ? 'wide' : 'nearby'} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={`mt-7 text-xs font-bold uppercase tracking-[0.2em] ${searchWidened ? 'text-amber-700' : 'text-brand-700'}`}>{searchWidened ? 'Widening search…' : 'Searching nearby levels'}</motion.p>
             <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight">Finding your room…</h1>
@@ -157,6 +158,7 @@ function MatchSplitReveal({ payload, currentUserId, reducedMotion }: { payload: 
   return (
     <main className="grid min-h-[calc(100vh-7rem)] place-items-center overflow-hidden px-5 py-10">
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-3xl rounded-[2rem] border border-brand-200 bg-white p-6 text-center shadow-soft sm:p-10">
+        <CharacterBuddy mood="celebrating" size="sm" className="mx-auto -mb-1" />
         <motion.p initial={{ opacity: 0, y: reducedMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">Match found</motion.p>
         <h1 className="mt-3 font-display text-3xl font-extrabold sm:text-4xl">Four learners. Two focused rooms.</h1>
         <p className="mt-3 text-sm text-slate-500">Your group is splitting into two independent conversation pairs.</p>
