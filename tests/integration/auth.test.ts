@@ -11,9 +11,11 @@ import { testConfig } from '../helpers';
 
 class MemoryUsers {
   values: User[] = [];
+  lastCreateData: Record<string, unknown> | null = null;
   findByEmail(email: string) { return Promise.resolve(this.values.find((user) => user.email === email) ?? null); }
   findById(id: string) { return Promise.resolve(this.values.find((user) => user.id === id) ?? null); }
   create(data: { email: string; passwordHash: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage?: string; goals?: string[]; interests?: string[] }) {
+    this.lastCreateData = data;
     const user: User = {
       id: `00000000-0000-4000-8000-${String(this.values.length + 1).padStart(12, '0')}`,
       ...data,
@@ -68,6 +70,8 @@ describe('auth HTTP flow', () => {
     }).expect(201);
     expect(registration.body.user.email).toBe('speaker@example.com');
     expect(registration.body.accessToken).toEqual(expect.any(String));
+    expect(users.lastCreateData).not.toHaveProperty('password');
+    expect(users.lastCreateData).toHaveProperty('passwordHash');
 
     const login = await request(app).post('/login').send({ email: 'speaker@example.com', password: 'GoodPassword123!' }).expect(200);
     const oldRefreshToken = login.body.refreshToken as string;

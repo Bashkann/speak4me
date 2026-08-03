@@ -18,8 +18,9 @@ export class AuthService {
     if (await this.users.findByEmail(input.email)) {
       throw new AppError(409, 'EMAIL_IN_USE', 'An account with this email already exists');
     }
-    const passwordHash = await bcrypt.hash(input.password, 12);
-    const user = await this.users.create({ ...input, passwordHash });
+    const { password, ...profile } = input;
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await this.users.create({ ...profile, passwordHash });
     return { user: this.publicUser(user), ...(await this.issuePair(user)) };
   }
 
