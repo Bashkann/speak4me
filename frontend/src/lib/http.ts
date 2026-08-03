@@ -3,7 +3,20 @@ import { useAuthStore } from '../store/auth-store';
 import type { AuthTokens } from '../types/api';
 import { useToastStore } from '../store/toast-store';
 
-export const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000/api';
+const configuredApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+if (!configuredApiUrl) {
+  throw new Error('VITE_API_URL is required. Set it to the backend /api URL before building the frontend.');
+}
+
+const parsedApiUrl = new URL(configuredApiUrl);
+if (!['http:', 'https:'].includes(parsedApiUrl.protocol)) {
+  throw new Error('VITE_API_URL must use http:// or https://.');
+}
+if (import.meta.env.PROD && parsedApiUrl.protocol !== 'https:') {
+  throw new Error('VITE_API_URL must use https:// in a production build.');
+}
+
+export const API_URL = configuredApiUrl.replace(/\/+$/, '');
 
 export const http = axios.create({
   baseURL: API_URL,

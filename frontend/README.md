@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. `VITE_API_URL` defaults to `http://localhost:3000/api`; LiveKit’s URL always comes from the voice-token endpoint.
+Open `http://localhost:5173`. `VITE_API_URL` is read from the copied `.env` file; LiveKit’s URL always comes from the voice-token endpoint at runtime.
 
 If 5173 is already occupied, Vite prints the next available URL (for example `http://localhost:5180`). Always open the exact URL shown by Vite.
 
