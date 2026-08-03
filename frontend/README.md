@@ -46,18 +46,34 @@ Alternatively, `docker compose up --build` at the repository root builds and ser
 - Floating labels, inline validation, skeleton loaders, and empty states keep async and error feedback close to the affected control. Keyboard focus uses a consistent high-contrast ring.
 - Reduced-motion mode removes ambient loops, directional movement, spring transforms, count-ups, and shimmer while preserving immediate opacity feedback and every interaction.
 
-## Production bundle note
+## Mascot system and replacing placeholder art
 
-Vite production output before and after the craft pass (uncompressed / gzip):
+`CharacterBuddy` is one original rounded creature with idle, happy, thinking, celebrating, and password-peek SVG expressions. Routes select a semantic mood such as `searching` or `error`; [`src/components/character/character-registry.ts`](src/components/character/character-registry.ts) maps that mood to the SVG pose and optional Lottie effect. The buddy is always decorative, and all Lottie imports/autoplay are skipped when `prefers-reduced-motion` is enabled.
+
+The three committed Lottie files are small CC0 placeholders layered behind the SVG buddy. Replace the file itself, or change the single matching `load` entry in the registry:
+
+| Placeholder | Appears in | Final-art replacement |
+| --- | --- | --- |
+| `src/assets/lottie/search-orbit.json` | Matchmaking search and no-results states | A gentle look-around/search accent |
+| `src/assets/lottie/loading-color.json` | Full-page, queue, and room loading states | A slow breathing/loading accent |
+| `src/assets/lottie/celebration-star.json` | Account finish, match found, and session finish | A brief celebration accent |
+
+The Vite build aliases `lottie-web` to its light SVG player because these placeholders use basic shapes and transforms. Remove that alias only if final art genuinely needs expressions, masks, or other full-player features. Record the final asset's author and license in [`CREDITS.md`](CREDITS.md); do not replace these files with unlicensed marketplace or brand artwork.
+
+## Mascot production bundle note
+
+Vite production output immediately before and after the mascot pass (uncompressed / gzip):
 
 | Asset | Before | After |
 | --- | ---: | ---: |
-| Main application JS | 506.58 / 163.23 kB | 512.44 / 165.39 kB |
-| Live room JS | 552.53 / 144.86 kB | 556.90 / 145.95 kB |
-| Styles | 34.85 / 6.94 kB | 43.18 / 8.10 kB |
-| Admin JS | included in main | 13.49 / 3.95 kB, lazy-loaded |
+| Main application JS | 512.44 / 165.39 kB | 521.10 / 167.91 kB |
+| Live room JS | 556.90 / 145.95 kB | 557.32 / 146.06 kB |
+| Styles | 43.18 / 8.10 kB | 44.13 / 8.33 kB |
+| Admin JS | 13.49 / 3.95 kB | 13.57 / 3.98 kB |
+| Optional light Lottie player | — | 176.80 / 50.80 kB, lazy-loaded |
+| Three Lottie effect chunks | — | 2.99 / 1.57 kB combined, lazy-loaded |
 
-The main gzip payload grew by about 1.3% while adding the 4→2+2 reveal and full two-person session choreography. The admin control panel remains a separate route chunk, so normal learners never download its implementation. Framer Motion remains the only animation runtime.
+The ordinary first-paint main JS + CSS gzip payload grows by about 2.75 kB (1.6%). The 50.80 kB light player and individual JSON effects are separate on-demand chunks: an idle login or home visit does not request them. Reduced-motion users keep the static SVG pose and never load or autoplay the Lottie runtime.
 
 For a faster manual test, set short non-production timer values in the backend environment or use the fake-timer integration suite. REST room creation still enforces round lengths between 5 and 10 minutes.
 

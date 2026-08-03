@@ -32,7 +32,11 @@ The existing backend implementation and its served OpenAPI document are the inte
 - Ambient authentication motion is intentionally slower than interaction feedback, but it is decorative, transform-only, and completely disabled when reduced motion is requested. Interactive feedback stays within roughly 120–320 ms and never gates input.
 - Loading skeletons are visual placeholders only; existing query loading/error/data states remain authoritative. Empty-state copy does not fabricate application records.
 - Dashboard counters animate only for the first non-zero value mounted in that view. Later live refreshes update immediately instead of replaying the count-up.
-- CSS/typographic symbols are used for onboarding micro-illustrations so the pass adds no image payload or extra animation dependency.
+- The mascot pass is frontend-only. It does not change authentication requests, matchmaking, room state, LiveKit permissions, database data, or any server event contract.
+- The rounded green buddy is an original, deliberately simple inline SVG. Its expressions use only transform/opacity motion; required information and actions remain readable and usable if the character is removed.
+- Three effects from the CC0 `LottieFiles/test-files` data set are temporary visual accents. Their local derivatives are recolored to the Speak Four palette and credited in `frontend/CREDITS.md`; they are not third-party brand characters.
+- `CharacterBuddy` always renders a static SVG pose first. Optional Lottie JSON and the light `lottie-react` player are dynamically imported only for loading, searching, and celebrating moods. A reduced-motion preference skips those imports, loops, and autoplay entirely.
+- The Vite alias to the light Lottie SVG player is safe for the current basic-shape placeholders. Future final art that uses expressions or unsupported effects must remove the alias and remeasure the production bundle.
 - The admin page is lazy-loaded because normal learners cannot reach it. The LiveKit room was already isolated as a separate route chunk and remains lazy-loaded.
 - The API runs one process because matchmaking presence and timer leadership are intentionally in process and Redis is out of scope.
 - React Router is kept on the current patched SPA release to address its link/navigation advisories. `npm audit` also flags an RSC action advisory in that package line; this Vite client does not enable React Server Components, server actions, SSR, or framework mode, so the affected execution path is absent.

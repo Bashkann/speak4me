@@ -2,7 +2,7 @@
 
 Speak Four's rounded green buddy is an original, deliberately simple inline SVG character created for this project. It does not use or imitate any brand character artwork.
 
-The small Lottie effects are temporary, replaceable placeholders from [LottieFiles/test-files](https://github.com/LottieFiles/test-files). The repository states that everything under `data/` is dedicated to the public domain under CC0:
+The small Lottie effects are temporary, replaceable placeholders from [LottieFiles/test-files](https://github.com/LottieFiles/test-files). The repository states that everything under `data/` is dedicated to the public domain under CC0. The local copies only change source colors to the Speak Four green/amber palette:
 
 | Local file | Upstream source | Usage |
 | --- | --- | --- |

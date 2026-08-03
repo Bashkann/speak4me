@@ -71,7 +71,7 @@ export function OnboardingWizard({ onSuccess }: { onSuccess: (session: AuthRespo
               ? draft.nativeLanguage ? 'happy' : 'thinking'
               : step === 4
                 ? draft.interests.length > 0 ? 'excited' : 'thinking'
-                : 'celebrating';
+                : 'encouraging';
   const buddyProp = selectedGoal ? goalBuddyProp(selectedGoal) : undefined;
 
   const go = (next: number) => {
