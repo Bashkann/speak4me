@@ -9,6 +9,13 @@ import { useAuthStore } from '../store/auth-store';
 import { useToastStore } from '../store/toast-store';
 import { Skeleton } from '../components/LoadingSkeleton';
 
+interface MatchRevealPayload {
+  matchId: string;
+  roomId: string;
+  pairIndex: number;
+  split: Array<Array<{ userId: string; displayName: string; englishLevel: string }>>;
+}
+
 export function WaitingPage() {
   const reducedMotion = useReducedMotion();
   const navigate = useNavigate();
@@ -18,6 +25,7 @@ export function WaitingPage() {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const [socketError, setSocketError] = useState<string | null>(null);
+  const [matchReveal, setMatchReveal] = useState<MatchRevealPayload | null>(null);
   const reconnectToastShown = useRef(false);
   const searchWidened = elapsedSec >= 120;
 
@@ -39,6 +47,12 @@ export function WaitingPage() {
     const matched = queueQuery.data;
     if (matched?.state === 'matched') navigate(`/rooms/${matched.roomId}`, { replace: true });
   }, [navigate, queueQuery.data]);
+
+  useEffect(() => {
+    if (!matchReveal) return;
+    const timer = window.setTimeout(() => navigate(`/rooms/${matchReveal.roomId}`, { replace: true }), reducedMotion ? 650 : 2_300);
+    return () => window.clearTimeout(timer);
+  }, [matchReveal, navigate, reducedMotion]);
 
   useEffect(() => {
     if (queueQuery.data?.state !== 'queued') return;
@@ -80,12 +94,19 @@ export function WaitingPage() {
         addToast('warning', 'Realtime matchmaking was interrupted. Reconnecting automatically.');
       }
     });
-    socket.on('matched', ({ roomId }: { roomId: string }) => openRoom(roomId));
+    socket.on('matched', (payload: MatchRevealPayload) => {
+      if (!active) return;
+      queryClient.removeQueries({ queryKey: ['ensure-queued', user?.id] });
+      if (payload.split?.length === 2) setMatchReveal(payload);
+      else openRoom(payload.roomId);
+    });
     return () => {
       active = false;
       socket.disconnect();
     };
   }, [addToast, navigate, queryClient, queueQuery.data?.state, user?.id]);
+
+  if (matchReveal) return <MatchSplitReveal payload={matchReveal} currentUserId={user?.id} reducedMotion={Boolean(reducedMotion)} />;
 
   return (
     <main className="relative grid min-h-[calc(100vh-7rem)] place-items-center overflow-hidden px-5 py-12">
@@ -131,6 +152,31 @@ export function WaitingPage() {
     </main>
   );
 }
+
+function MatchSplitReveal({ payload, currentUserId, reducedMotion }: { payload: MatchRevealPayload; currentUserId?: string; reducedMotion: boolean }) {
+  return (
+    <main className="grid min-h-[calc(100vh-7rem)] place-items-center overflow-hidden px-5 py-10">
+      <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-3xl rounded-[2rem] border border-brand-200 bg-white p-6 text-center shadow-soft sm:p-10">
+        <motion.p initial={{ opacity: 0, y: reducedMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">Match found</motion.p>
+        <h1 className="mt-3 font-display text-3xl font-extrabold sm:text-4xl">Four learners. Two focused rooms.</h1>
+        <p className="mt-3 text-sm text-slate-500">Your group is splitting into two independent conversation pairs.</p>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {payload.split.map((pair, pairIndex) => (
+            <motion.div key={pairIndex} initial={{ opacity: 0, x: reducedMotion ? 0 : pairIndex === 0 ? 34 : -34, scale: reducedMotion ? 1 : 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ delay: reducedMotion ? 0 : 0.35 + pairIndex * 0.12, type: 'spring', stiffness: 260, damping: 24 }} className={`rounded-3xl border p-5 ${pairIndex === payload.pairIndex ? 'border-brand-400 bg-brand-50 ring-4 ring-brand-100' : 'border-slate-200 bg-slate-50'}`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{pairIndex === payload.pairIndex ? 'Your room' : 'Parallel room'}</p>
+              <div className="mt-5 flex items-center justify-center gap-3">
+                {pair.map((participant, index) => <motion.div key={participant.userId} initial={{ opacity: 0, y: reducedMotion ? 0 : -18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reducedMotion ? 0 : 0.7 + pairIndex * 0.12 + index * 0.1 }} className="min-w-0"><span className={`mx-auto grid h-14 w-14 place-items-center rounded-2xl font-display text-sm font-extrabold ${participant.userId === currentUserId ? 'bg-brand-700 text-white' : 'bg-white text-ink shadow-sm'}`}>{initials(participant.displayName)}</span><p className="mt-2 max-w-24 truncate text-xs font-bold text-ink">{participant.userId === currentUserId ? 'You' : participant.displayName}</p></motion.div>)}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.p animate={reducedMotion ? undefined : { opacity: [0.45, 1, 0.45] }} transition={{ duration: 1.1, repeat: Infinity }} className="mt-7 text-sm font-bold text-brand-700">Entering your room…</motion.p>
+      </motion.section>
+    </main>
+  );
+}
+
+function initials(name: string): string { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join(''); }
 
 function formatElapsed(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;

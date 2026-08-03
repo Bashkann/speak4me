@@ -25,7 +25,10 @@ export function RoomPage() {
   const addToast = useToastStore((state) => state.add);
   const socketRef = useRef<Socket | null>(null);
   const reconnectToastShown = useRef(false);
+  const handoffTimerRef = useRef<number | null>(null);
+  const finishTimerRef = useRef<number | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [lockFeedback, setLockFeedback] = useState(false);
   const countdown = useAbsoluteCountdown(session.deadline);
   const currentRole = session.speakerUserId === user?.id ? 'speaker' : session.listenerUserId === user?.id ? 'listener' : null;
   const audioEnabled = Boolean(session.room && !['finished', 'aborted'].includes(session.room.status));
@@ -57,19 +60,37 @@ export function RoomPage() {
     socket.on('participant_left', ({ userId }: { userId: string }) => session.setParticipantConnected(userId, false));
     socket.on('room_ready', ({ endsAt }: { endsAt: string }) => session.roomReady(endsAt));
     socket.on('round_started', (event: RoundStartedEvent) => session.roundStarted(event));
-    socket.on('topic_updated', (event: { topic: TopicOffer; swapsRemaining: number; topicLocked: boolean; continuedPrevious?: boolean }) => session.topicUpdated(event));
-    socket.on('topic_locked', () => session.topicLockedByServer());
+    const triggerTopicLock = () => {
+      if (useRoomStore.getState().speakerUserId === useAuthStore.getState().user?.id) navigator.vibrate?.(35);
+      setLockFeedback(true);
+      window.setTimeout(() => setLockFeedback(false), 650);
+    };
+    socket.on('topic_updated', (event: { topic: TopicOffer; swapsRemaining: number; topicLocked: boolean; continuedPrevious?: boolean }) => {
+      session.topicUpdated(event);
+      if (event.topicLocked) triggerTopicLock();
+    });
+    socket.on('topic_locked', () => { session.topicLockedByServer(); triggerTopicLock(); });
+    socket.on('role_swap', (event: { nextSpeakerUserId: string; nextListenerUserId: string }) => {
+      session.roleSwap(event);
+      if (handoffTimerRef.current) window.clearTimeout(handoffTimerRef.current);
+      handoffTimerRef.current = window.setTimeout(session.clearHandoff, reducedMotion ? 700 : 1_900);
+    });
     socket.on('round_break', ({ endsAt }: { endsAt: string }) => session.roundBreak(endsAt));
     socket.on('session_finished', ({ rounds }: { rounds: RoundSummary[] }) => {
       session.finish(rounds); void queryClient.invalidateQueries({ queryKey: ['session-history'] }); socket.disconnect();
+      finishTimerRef.current = window.setTimeout(() => navigate('/history', { replace: true }), reducedMotion ? 900 : 2_600);
     });
     socket.on('session_aborted', ({ reason }: { reason: string }) => { session.abort(humanizeReason(reason)); socket.disconnect(); });
     socket.on('error', (error: { message?: string }) => addToast('error', error.message ?? 'A room connection error occurred.'));
     return () => { socket.disconnect(); socketRef.current = null; };
-  }, [addToast, queryClient, roomId, session.abort, session.finish, session.hydrate, session.roomReady, session.roundBreak, session.roundStarted, session.setParticipantConnected, session.setSocketState, session.topicLockedByServer, session.topicUpdated]);
+  }, [addToast, navigate, queryClient, reducedMotion, roomId, session.abort, session.clearHandoff, session.finish, session.hydrate, session.roleSwap, session.roomReady, session.roundBreak, session.roundStarted, session.setParticipantConnected, session.setSocketState, session.topicLockedByServer, session.topicUpdated]);
 
   useEffect(() => { if (audio.microphoneError) addToast('warning', audio.microphoneError); }, [addToast, audio.microphoneError]);
   useEffect(() => () => session.reset(), [session.reset]);
+  useEffect(() => () => {
+    if (handoffTimerRef.current) window.clearTimeout(handoffTimerRef.current);
+    if (finishTimerRef.current) window.clearTimeout(finishTimerRef.current);
+  }, []);
 
   const leave = async () => {
     if (!roomId || isLeaving) return;
@@ -89,6 +110,7 @@ export function RoomPage() {
   return (
     <main className="min-h-screen bg-[#eff3ef] pb-28 md:pb-0">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8"><Brand /><div className="flex items-center gap-3"><ConnectionPill state={session.socketState} /><button type="button" onClick={() => void leave()} disabled={isLeaving} className="hidden rounded-xl border border-red-100 bg-red-50 px-3.5 py-2 text-sm font-bold text-red-700 md:inline-flex">{isLeaving ? 'Leaving…' : 'Leave'}</button></div></div></header>
+      <AnimatePresence>{session.handoff && <HandoffBanner isNextSpeaker={session.handoff.nextSpeakerUserId === user?.id} reducedMotion={Boolean(reducedMotion)} />}</AnimatePresence>
       <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
         <section className="mb-6 flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center"><div className="flex items-center gap-3"><StatusDot status={room.status} /><div><p className="text-sm font-extrabold text-ink">{statusTitle(room.status, room.currentRound)}</p><p className="mt-0.5 text-xs font-medium text-slate-400">Room {room.code} · 2 people · {Math.round(room.roundDurationSec / 60)} minute rounds</p></div></div>{countdown !== null && room.status !== 'waiting' && <Timer remainingSec={countdown} label={timerLabel(room.status)} />}</section>
         {room.status === 'finished' ? <FinishedPanel summary={session.summary ?? []} /> : room.status === 'aborted' ? <AbortedPanel reason={session.abortReason ?? 'The session ended unexpectedly.'} /> : (
@@ -96,7 +118,7 @@ export function RoomPage() {
             <section className="grid gap-3 sm:grid-cols-2 sm:gap-4">{[1, 2].map((seat) => { const participant = room.participants.find((item) => item.seat === seat); return <SeatCard key={seat} seat={seat} participant={participant} speakerUserId={session.speakerUserId} currentUserId={user?.id} audioLevel={audio.audioLevels[participant?.userId ?? ''] ?? 0} microphoneOn={audio.microphoneEnabled[participant?.userId ?? ''] ?? false} reducedMotion={Boolean(reducedMotion)} />; })}</section>
             <aside className="space-y-5">
               <RolePanel role={currentRole} status={room.status} participants={room.participants.length} />
-              <TopicPanel role={currentRole} topic={session.topic} swapsRemaining={session.swapsRemaining} locked={session.topicLocked} canContinuePrevious={session.canContinuePrevious} previousTopic={session.previousTopic} continuedPrevious={session.continuedPrevious} onSwap={swapTopic} onChoosePrevious={choosePrevious} />
+              <TopicPanel role={currentRole} topic={session.topic} swapsRemaining={session.swapsRemaining} locked={session.topicLocked} lockFeedback={lockFeedback} canContinuePrevious={session.canContinuePrevious} previousTopic={session.previousTopic} continuedPrevious={session.continuedPrevious} onSwap={swapTopic} onChoosePrevious={choosePrevious} reducedMotion={Boolean(reducedMotion)} />
               <div className="hidden md:block"><AudioControls role={currentRole} audio={audio} /></div>
             </aside>
           </div>
@@ -107,12 +129,16 @@ export function RoomPage() {
   );
 }
 
+function HandoffBanner({ isNextSpeaker, reducedMotion }: { isNextSpeaker: boolean; reducedMotion: boolean }) {
+  return <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : -18, scale: reducedMotion ? 1 : 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -10 }} className="pointer-events-none fixed inset-x-4 top-20 z-40 mx-auto max-w-md rounded-2xl border border-brand-200 bg-white/95 px-5 py-4 text-center shadow-soft backdrop-blur"><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Role hand-off</p><p className="mt-1 font-display text-xl font-extrabold text-ink">{isNextSpeaker ? "Now it's your turn to speak" : 'Now you listen'}</p></motion.div>;
+}
+
 function RolePanel({ role, status, participants }: { role: 'speaker' | 'listener' | null; status: RoomStatus; participants: number }) {
   return <AnimatePresence mode="wait" initial={false}><motion.section key={`${status}-${role ?? 'waiting'}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className={`rounded-3xl p-6 ${role === 'speaker' ? 'bg-brand-700 text-white shadow-glow' : role === 'listener' ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-ink'}`}><p className={`text-xs font-bold uppercase tracking-[0.18em] ${role ? 'text-brand-200' : 'text-slate-400'}`}>{role ? 'Your role' : 'Room status'}</p><h2 className="mt-3 font-display text-3xl font-extrabold">{role === 'speaker' ? "You're speaking" : role === 'listener' ? "You're listening" : status === 'break' ? 'Roles are switching' : status === 'ready' ? 'Get ready' : 'Waiting for your partner'}</h2><p className={`mt-3 text-sm leading-6 ${role ? 'text-slate-200' : 'text-slate-500'}`}>{role === 'speaker' ? 'Your microphone is available. Guide the conversation from the topic below.' : role === 'listener' ? 'Listen closely. Publishing is disabled until your turn.' : `${participants} / 2 people joined.`}</p></motion.section></AnimatePresence>;
 }
 
-function TopicPanel({ role, topic, swapsRemaining, locked, canContinuePrevious, previousTopic, continuedPrevious, onSwap, onChoosePrevious }: { role: 'speaker' | 'listener' | null; topic: TopicOffer | null; swapsRemaining: number; locked: boolean; canContinuePrevious: boolean; previousTopic: TopicOffer | null; continuedPrevious: boolean; onSwap: () => void; onChoosePrevious: () => void }) {
-  return <section className="rounded-3xl border border-slate-200 bg-white p-6"><div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Conversation topic</p>{topic && <div className="flex gap-1" aria-label={`${swapsRemaining} topic swaps remaining`}>{[0, 1, 2].map((dot) => <span key={dot} className={`h-2 w-2 rounded-full ${dot < swapsRemaining + 1 ? 'bg-brand-500' : 'bg-slate-200'}`} />)}</div>}</div>{topic ? <motion.div key={topic.id} initial={{ opacity: 0, rotateX: -18, y: 6 }} animate={{ opacity: 1, rotateX: 0, y: 0 }} className="mt-4 rounded-2xl bg-brand-50 p-4"><h2 className="font-display text-xl font-extrabold leading-7 text-ink">“{topic.textEn}”</h2></motion.div> : <p className="mt-4 text-sm leading-6 text-slate-500">The topic appears when the speaking round begins.</p>}{role === 'speaker' && topic && <div className="mt-4 space-y-2">{canContinuePrevious && previousTopic && !continuedPrevious && <button type="button" onClick={onChoosePrevious} className="secondary-button w-full !py-2.5">Continue previous topic</button>}<button type="button" onClick={onSwap} disabled={locked || swapsRemaining === 0} className="primary-button w-full !py-2.5">{locked || swapsRemaining === 0 ? 'No more topic changes' : `Swap topic · ${swapsRemaining} left`}</button>{locked && <p role="status" className="text-center text-xs font-bold text-amber-700">That’s your last topic.</p>}</div>}</section>;
+function TopicPanel({ role, topic, swapsRemaining, locked, lockFeedback, canContinuePrevious, previousTopic, continuedPrevious, onSwap, onChoosePrevious, reducedMotion }: { role: 'speaker' | 'listener' | null; topic: TopicOffer | null; swapsRemaining: number; locked: boolean; lockFeedback: boolean; canContinuePrevious: boolean; previousTopic: TopicOffer | null; continuedPrevious: boolean; onSwap: () => void; onChoosePrevious: () => void; reducedMotion: boolean }) {
+  return <motion.section animate={lockFeedback && !reducedMotion ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }} transition={{ duration: 0.42 }} className="rounded-3xl border border-slate-200 bg-white p-6"><div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Conversation topic</p>{topic && <div className="flex gap-1" aria-label={`${swapsRemaining} topic swaps remaining`}>{[0, 1, 2].map((dot) => <motion.span key={dot} animate={{ scale: dot < swapsRemaining + 1 ? 1 : 0.72, opacity: dot < swapsRemaining + 1 ? 1 : 0.45 }} className={`h-2 w-2 rounded-full ${dot < swapsRemaining + 1 ? 'bg-brand-500' : 'bg-slate-200'}`} />)}</div>}</div><AnimatePresence mode="wait">{topic ? <motion.div key={topic.id} initial={{ opacity: 0, rotateY: reducedMotion ? 0 : -72, y: reducedMotion ? 0 : 8 }} animate={{ opacity: 1, rotateY: 0, y: 0 }} exit={{ opacity: 0, rotateY: reducedMotion ? 0 : 72 }} transition={{ duration: reducedMotion ? 0.08 : 0.34 }} className="mt-4 rounded-2xl bg-brand-50 p-4"><h2 className="font-display text-xl font-extrabold leading-7 text-ink">“{topic.textEn}”</h2></motion.div> : <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-sm leading-6 text-slate-500">The topic appears when the speaking round begins.</motion.p>}</AnimatePresence>{role === 'speaker' && topic && <div className="mt-4 space-y-2"><AnimatePresence>{canContinuePrevious && previousTopic && !continuedPrevious && <motion.button initial={{ opacity: 0, y: reducedMotion ? 0 : 7 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} type="button" onClick={onChoosePrevious} className="secondary-button w-full !py-2.5">Continue previous topic</motion.button>}</AnimatePresence><motion.button whileTap={reducedMotion ? undefined : { rotate: -1.5, scale: 0.98 }} type="button" onClick={onSwap} disabled={locked || swapsRemaining === 0} className="primary-button w-full !py-2.5">{locked || swapsRemaining === 0 ? <><span aria-hidden="true">🔒</span>No more topic changes</> : <><span aria-hidden="true">↻</span>Swap topic · {swapsRemaining} left</>}</motion.button><AnimatePresence>{locked && <motion.p initial={{ opacity: 0, y: reducedMotion ? 0 : -4 }} animate={{ opacity: 1, y: 0 }} role="status" className="text-center text-xs font-bold text-amber-700">That’s your last topic.</motion.p>}</AnimatePresence></div>}</motion.section>;
 }
 
 function SeatCard({ seat, participant, speakerUserId, currentUserId, audioLevel, microphoneOn, reducedMotion }: { seat: number; participant?: RoomParticipant; speakerUserId: string | null; currentUserId?: string; audioLevel: number; microphoneOn: boolean; reducedMotion: boolean }) {

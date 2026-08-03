@@ -19,6 +19,7 @@ interface RoomSessionState {
   canContinuePrevious: boolean;
   previousTopic: TopicOffer | null;
   continuedPrevious: boolean;
+  handoff: { nextSpeakerUserId: string; nextListenerUserId: string } | null;
   socketState: 'connecting' | 'connected' | 'reconnecting';
   summary: RoundSummary[] | null;
   abortReason: string | null;
@@ -29,6 +30,8 @@ interface RoomSessionState {
   roundStarted: (input: RoundStartedEvent) => void;
   topicUpdated: (input: { topic: TopicOffer; swapsRemaining: number; topicLocked: boolean; continuedPrevious?: boolean }) => void;
   topicLockedByServer: () => void;
+  roleSwap: (input: { nextSpeakerUserId: string; nextListenerUserId: string }) => void;
+  clearHandoff: () => void;
   roundBreak: (endsAt: string) => void;
   finish: (rounds: RoundSummary[]) => void;
   abort: (reason: string) => void;
@@ -46,6 +49,7 @@ const initialState = {
   canContinuePrevious: false,
   previousTopic: null,
   continuedPrevious: false,
+  handoff: null,
   socketState: 'connecting' as const,
   summary: null,
   abortReason: null,
@@ -99,6 +103,7 @@ export const useRoomStore = create<RoomSessionState>((set) => ({
     canContinuePrevious: input.canContinuePrevious,
     previousTopic: input.previousTopic,
     continuedPrevious: input.continuedPrevious ?? false,
+    handoff: null,
   })),
   topicUpdated: (input) => set((state) => ({
     room: state.room ? {
@@ -116,6 +121,8 @@ export const useRoomStore = create<RoomSessionState>((set) => ({
     swapsRemaining: 0,
     room: state.room ? { ...state.room, activeRound: state.room.activeRound ? { ...state.room.activeRound, topicLocked: true, swapsRemaining: 0 } : null } : null,
   })),
+  roleSwap: (handoff) => set({ handoff }),
+  clearHandoff: () => set({ handoff: null }),
   roundBreak: (endsAt) => set((state) => ({
     room: state.room ? { ...state.room, status: 'break', currentRound: null, currentTopic: null, activeRound: null, roundEndsAt: endsAt } : null,
     speakerUserId: null,

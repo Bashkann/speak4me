@@ -35,4 +35,11 @@ describe('room session store', () => {
     expect(useRoomStore.getState().room?.participants[0]?.connected).toBe(false);
     expect(useRoomStore.getState().room?.code).toBe('ABC123');
   });
+
+  it('stores and clears the role handoff transition', () => {
+    useRoomStore.getState().roleSwap({ nextSpeakerUserId: 'user-b', nextListenerUserId: 'user-a' });
+    expect(useRoomStore.getState().handoff?.nextSpeakerUserId).toBe('user-b');
+    useRoomStore.getState().clearHandoff();
+    expect(useRoomStore.getState().handoff).toBeNull();
+  });
 });
