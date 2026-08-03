@@ -27,3 +27,16 @@ The existing backend implementation and its served OpenAPI document are the inte
 - The admin page is lazy-loaded because normal learners cannot reach it. The LiveKit room was already isolated as a separate route chunk and remains lazy-loaded.
 - V1 runs one API process because matchmaking presence and timer leadership are intentionally in process and Redis is out of scope.
 - React Router is kept on the current patched SPA release to address its link/navigation advisories. `npm audit` also flags an RSC action advisory in that package line; this Vite client does not enable React Server Components, server actions, SSR, or framework mode, so the affected execution path is absent.
+
+## Production deployment assumptions
+
+- The production topology is intentionally fixed to LiveKit Cloud, one always-on Railway API replica plus Railway PostgreSQL, and a static Vite frontend on Vercel. The local Compose LiveKit container is never deployed to production.
+- Railway deploys from the repository root and reads `railway.json`; Vercel imports the same repository with `frontend` as its Root Directory.
+- Railway Serverless/App Sleeping remains disabled. Matchmaking presence and timer leadership are in process, so the API must remain at exactly one replica until a distributed coordinator/Redis design is implemented.
+- Railway's PostgreSQL service is assumed to be named `Postgres` for the `${{Postgres.DATABASE_URL}}` reference shown in the runbook. If the human chooses another service name, they must update that reference.
+- Production REST and Socket.IO CORS use an exact, comma-separated origin allowlist. Dynamic Vercel preview domains are not wildcarded; any preview origin must be added explicitly.
+- `VITE_API_URL` is public build-time configuration and ends in `/api`. Socket.IO derives the backend origin from it; no independent WebSocket variable is necessary. Changing the backend domain requires a new Vercel build.
+- The browser-facing LiveKit URL remains runtime data from `POST /api/rooms/:id/voice-token`; no LiveKit URL or credential is baked into the frontend. For LiveKit Cloud, internal and public URLs are normally the same `wss://` Project URL.
+- Production seeding is explicitly opt-in. `npm run db:seed:production` upserts topics and one administrator from temporary seed environment variables; it never creates local demo users. Normal production boot never runs a seed.
+- The VPS Compose alternative binds the API to loopback and assumes a separately managed HTTPS reverse proxy with WebSocket upgrade support. TLS termination is intentionally not bundled with the API/PostgreSQL Compose file.
+- LiveKit, Vercel, and Railway plan names, quotas, and pricing were checked against official documentation on 2026-08-03 and may change. Vercel Hobby is assumed only for a qualifying personal/non-commercial demo; the human must verify current terms before commercial use.

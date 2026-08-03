@@ -1,8 +1,10 @@
 # English Speaking Rooms API
 
-Backend v1 for four-person English speaking practice sessions. It provides a REST API, JWT-authenticated Socket.IO channels, PostgreSQL matchmaking and recoverable timers, plus self-hosted LiveKit audio permissions.
+Backend v1 for four-person English speaking practice sessions. It provides a REST API, JWT-authenticated Socket.IO channels, PostgreSQL matchmaking and recoverable timers, plus LiveKit audio permissions (self-hosted locally, LiveKit Cloud in production).
 
 The repository also includes a React test frontend in [`frontend/`](frontend/README.md) that exercises the complete multi-user and LiveKit flow.
+
+For the exact LiveKit Cloud + Railway + Vercel production procedure, use [`DEPLOY.md`](DEPLOY.md). It includes environment variables, first-admin seeding, smoke tests, custom domains, costs, and troubleshooting.
 
 ## Quick start
 
@@ -60,12 +62,13 @@ The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycl
 | Variable | Default/example | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL URL | Prisma connection string |
-| `PORT` | `3000` | HTTP port |
+| `PORT` | required; `3000` locally | HTTP port; Railway injects it |
+| `CORS_ORIGIN` | comma-separated origins | Exact frontend origins allowed by REST and Socket.IO |
 | `JWT_ACCESS_SECRET` | 32+ chars | Access-token signing key |
 | `JWT_REFRESH_SECRET` | 32+ chars | Refresh-token signing key |
 | `ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
 | `REFRESH_TOKEN_TTL_DAYS` | `30` | Refresh token lifetime |
-| `LIVEKIT_URL` | `ws://localhost:7880` | Server-side LiveKit URL; converted to HTTP for RPC |
+| `LIVEKIT_URL` | `ws://localhost:7880` locally | Server-side LiveKit URL; production requires LiveKit Cloud `wss://` |
 | `LIVEKIT_PUBLIC_URL` | optional | Browser-facing LiveKit URL when it differs from `LIVEKIT_URL` (for example in Docker) |
 | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | dev credentials | LiveKit token/RPC credentials |
 | `MATCHMAKING_INTERVAL_MS` | `3000` | Queue scan interval |
