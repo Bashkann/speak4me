@@ -6,8 +6,7 @@
   },
   "deploy": {
     "preDeployCommand": [
-      "npm run db:migrate",
-      "npm run db:seed:topics"
+      "npm run db:prepare:deploy"
     ],
     "startCommand": "npm start",
     "healthcheckPath": "/healthz",
