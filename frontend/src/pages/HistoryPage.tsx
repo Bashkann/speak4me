@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSessionHistory } from '../api/rooms';
 import { getApiErrorMessage } from '../lib/api-error';
+import { EmptyState } from '../components/EmptyState';
+import { Skeleton } from '../components/LoadingSkeleton';
 
 export function HistoryPage() {
   const [page, setPage] = useState(1);
@@ -21,14 +23,10 @@ export function HistoryPage() {
           {query.data && <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 ring-1 ring-slate-200">{query.data.total} sessions</span>}
         </div>
 
-        {query.isLoading && <div className="mt-8 space-y-3">{[1, 2, 3].map((item) => <div key={item} className="h-32 animate-pulse rounded-2xl bg-white" />)}</div>}
+        {query.isLoading && <div className="mt-8 space-y-3" aria-label="Loading session history">{[1, 2, 3].map((item) => <div key={item} className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex gap-4"><Skeleton className="h-11 w-11 shrink-0" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-3 w-1/5" /></div></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div>}
         {query.isError && <div role="alert" className="mt-8 rounded-2xl border border-red-100 bg-red-50 p-5 text-sm font-semibold text-red-700">{getApiErrorMessage(query.error, 'Could not load your history.')}</div>}
         {query.data?.items.length === 0 && (
-          <div className="mt-8 rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
-            <span className="text-4xl" aria-hidden="true">💬</span>
-            <h2 className="mt-4 font-display text-xl font-extrabold">No finished sessions yet</h2>
-            <p className="mt-2 text-sm text-slate-500">Complete both rounds in a room and it will appear here.</p>
-          </div>
+          <div className="mt-8"><EmptyState icon="💬" title="No finished sessions yet" detail="Complete both rounds in a room and your conversation will appear here." /></div>
         )}
         {query.data && query.data.items.length > 0 && (
           <div className={`mt-8 space-y-3 transition ${query.isFetching ? 'opacity-60' : ''}`}>

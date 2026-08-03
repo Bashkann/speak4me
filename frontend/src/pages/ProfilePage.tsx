@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/auth-store';
 import { useToastStore } from '../store/toast-store';
 import { ThemeToggle } from '../components/ThemeToggle';
 import type { EnglishLevel } from '../types/api';
+import { PanelSkeleton, Skeleton } from '../components/LoadingSkeleton';
 
 const goalOptions = ['exam-prep', 'travel', 'work-business', 'moving-abroad', 'just-for-fun'];
 const interestOptions = ['technology', 'travel', 'movies & series', 'sports', 'business', 'daily life', 'science', 'culture', 'music', 'food'];
@@ -46,7 +47,7 @@ export function ProfilePage() {
     onSettled: clearSession,
   });
 
-  if (!user) return <main className="grid min-h-[60vh] place-items-center"><span className="h-10 w-10 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" /></main>;
+  if (!user) return <main className="px-5 py-8 sm:px-8 sm:py-12"><div className="mx-auto max-w-5xl"><Skeleton className="h-44 w-full rounded-[2rem]" /><div className="mt-6 grid grid-cols-3 gap-3"><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /></div><div className="mt-6"><PanelSkeleton /></div></div></main>;
 
   return (
     <main className="px-5 py-8 sm:px-8 sm:py-12">

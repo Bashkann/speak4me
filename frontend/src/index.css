@@ -42,22 +42,29 @@
 
   button,
   input,
-  select {
+  select,
+  textarea {
     font: inherit;
   }
 
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  select:focus-visible {
-    outline: 3px solid rgba(34, 163, 111, 0.3);
-    outline-offset: 2px;
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #22a36f;
+    outline-offset: 3px;
+  }
+
+  :where(button, a) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled):active,
+  a:active {
+    transform: scale(0.98);
   }
 }
 
 @layer components {
   .field {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-ink shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-ink shadow-sm transition-[border-color,box-shadow,background-color,color,transform] duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100;
   }
 
   .label {
@@ -65,11 +72,16 @@
   }
 
   .primary-button {
-    @apply inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-[transform,background-color,box-shadow,opacity] duration-150 hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none;
   }
 
   .secondary-button {
-    @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-[transform,border-color,background-color,box-shadow,opacity] duration-150 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+  }
+
+  .inline-spinner {
+    @apply h-4 w-4 rounded-full border-2 border-current border-r-transparent;
+    animation: spin 700ms linear infinite;
   }
 }
 
@@ -96,7 +108,34 @@
   .dark .ring-slate-200 { --tw-ring-color: #284438; }
   .dark .field { border-color: #315043; background-color: #10201a; color: #eff8f3; }
   .dark .secondary-button { border-color: #315043; background-color: #10201a; color: #dce9e2; }
+
+  .skeleton {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .skeleton::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.72), transparent);
+    transform: translateX(-100%);
+    animation: skeleton-shimmer 1.35s ease-in-out infinite;
+  }
+
+  .dark .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(123,217,173,0.08), transparent);
+  }
+
+  .toast-progress {
+    transform-origin: left;
+    animation: toast-progress 5s linear forwards;
+  }
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes skeleton-shimmer { to { transform: translateX(100%); } }
+@keyframes toast-progress { to { transform: scaleX(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -104,5 +143,10 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .skeleton::after,
+  .toast-progress {
+    animation: none !important;
   }
 }

@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Socket } from 'socket.io-client';
 import { getRoom, leaveRoom } from '../api/rooms';
 import { Brand } from '../components/Brand';
+import { Skeleton } from '../components/LoadingSkeleton';
 import { useAbsoluteCountdown } from '../hooks/useAbsoluteCountdown';
 import { useLiveKitAudio, type MicrophoneState } from '../hooks/useLiveKitAudio';
 import { getApiErrorMessage } from '../lib/api-error';
@@ -285,7 +286,7 @@ function AbortedPanel({ reason }: { reason: string }) {
   return <section className="mx-auto max-w-xl rounded-[2rem] border border-amber-200 bg-white p-8 text-center shadow-soft"><span className="text-4xl">⚠️</span><h1 className="mt-5 font-display text-3xl font-extrabold">Session ended early</h1><p className="mt-3 text-sm leading-6 text-slate-500">{reason}</p><div className="mt-7 flex justify-center gap-3"><Link to="/" className="secondary-button">Home</Link><Link to="/waiting" className="primary-button">Find another room</Link></div></section>;
 }
 
-function RoomLoading() { return <main className="grid min-h-screen place-items-center bg-canvas"><div className="text-center"><span className="mx-auto block h-11 w-11 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" /><p className="mt-4 text-sm font-semibold text-slate-500">Joining room…</p></div></main>; }
+function RoomLoading() { return <main className="min-h-screen bg-canvas px-5 py-6 sm:px-8"><div className="mx-auto max-w-7xl"><div className="flex items-center justify-between"><Skeleton className="h-11 w-36" /><Skeleton className="h-8 w-20 rounded-full" /></div><Skeleton className="mt-7 h-20 w-full rounded-2xl" /><div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"><div className="grid grid-cols-2 gap-2.5 sm:gap-4">{[1, 2, 3, 4].map((seat) => <Skeleton key={seat} className="h-44 rounded-2xl sm:h-52 sm:rounded-3xl" />)}</div><div className="space-y-5"><Skeleton className="h-52 rounded-3xl" /><Skeleton className="h-32 rounded-3xl" /></div></div><p className="sr-only">Joining room…</p></div></main>; }
 function MicIcon({ muted }: { muted: boolean }) { return <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" strokeLinecap="round" strokeLinejoin="round" />{muted && <path d="m3 3 18 18" strokeLinecap="round" />}</svg>; }
 function StatusDot({ status }: { status: RoomStatus }) { const active = ['round1', 'round2'].includes(status); return <span className={`h-3 w-3 rounded-full ${active ? 'animate-pulse bg-brand-500' : status === 'aborted' ? 'bg-red-500' : status === 'finished' ? 'bg-brand-500' : 'bg-amber-400'}`} />; }
 function statusTitle(status: RoomStatus, round: number | null): string { return ({ waiting: 'Waiting for the room', ready: 'Everyone is ready', round1: `Round ${round ?? 1} in progress`, break: 'Round break', round2: `Round ${round ?? 2} in progress`, finished: 'Session complete', aborted: 'Session aborted' })[status]; }

@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '../lib/api-error';
 import { createSocket } from '../lib/socket';
 import { useAuthStore } from '../store/auth-store';
 import { useToastStore } from '../store/toast-store';
+import { Skeleton } from '../components/LoadingSkeleton';
 
 export function WaitingPage() {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ export function WaitingPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(175,234,204,0.35),transparent_48%)]" />
       <section className="relative w-full max-w-lg rounded-[2rem] border border-white bg-white/90 p-7 text-center shadow-soft backdrop-blur sm:p-10">
         {queueQuery.isLoading ? (
-          <div className="py-16"><span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600" /><p className="mt-5 text-sm font-semibold text-slate-500">Joining the queue…</p></div>
+          <div className="py-10" aria-label="Joining the matchmaking queue"><Skeleton className="mx-auto h-36 w-36 rounded-full" /><Skeleton className="mx-auto mt-7 h-3 w-36" /><Skeleton className="mx-auto mt-4 h-8 w-64" /><Skeleton className="mx-auto mt-4 h-4 w-72" /><p className="sr-only">Joining the queue…</p></div>
         ) : queueQuery.isError ? (
           <div className="py-8">
             <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-2xl">!</span>
