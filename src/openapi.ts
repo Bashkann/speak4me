@@ -1,6 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import { loginSchema, logoutSchema, refreshSchema, registerSchema } from './schemas/auth';
+import { forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema, resetPasswordSchema } from './schemas/auth';
 import { englishLevelSchema, errorSchema, idParamsSchema, paginationSchema } from './schemas/common';
 import { updateMeSchema } from './schemas/me';
 import { createRoomSchema, joinRoomSchema, reportSchema } from './schemas/rooms';
@@ -61,6 +61,16 @@ registry.registerPath({
   method: 'get', path: '/api/auth/google/callback', tags: ['Auth'], summary: 'Google sign-in callback',
   request: { query: z.object({ code: z.string().optional(), state: z.string().optional() }) },
   responses: { 302: { description: 'Redirect to the frontend with tokens or an error' } },
+});
+registry.registerPath({
+  method: 'post', path: '/api/auth/forgot-password', tags: ['Auth'], summary: 'Request a password reset email',
+  request: { body: { content: { 'application/json': { schema: forgotPasswordSchema } } } },
+  responses: { 200: json(z.object({ ok: z.literal(true) }), 'Always 200 regardless of whether the email matched an account'), ...errors },
+});
+registry.registerPath({
+  method: 'post', path: '/api/auth/reset-password', tags: ['Auth'], summary: 'Reset a password using an emailed token',
+  request: { body: { content: { 'application/json': { schema: resetPasswordSchema } } } },
+  responses: { 200: json(z.object({ ok: z.literal(true) })), ...errors },
 });
 
 const userSchema = z.object({

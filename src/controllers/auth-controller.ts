@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { GoogleOAuthClient } from '../lib/google-oauth-client';
-import { loginSchema, logoutSchema, refreshSchema, registerSchema } from '../schemas/auth';
+import { forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema, resetPasswordSchema } from '../schemas/auth';
 import { AuthService } from '../services/auth-service';
 
 const STATE_COOKIE = 'g_oauth_state';
@@ -34,6 +34,18 @@ export class AuthController {
     const { refreshToken } = logoutSchema.parse(req.body);
     await this.service.logout(refreshToken);
     res.status(204).send();
+  };
+
+  forgotPassword = async (req: Request, res: Response) => {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    await this.service.forgotPassword(email);
+    res.status(200).json({ ok: true });
+  };
+
+  resetPassword = async (req: Request, res: Response) => {
+    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+    await this.service.resetPassword(token, newPassword);
+    res.status(200).json({ ok: true });
   };
 
   providers = (_req: Request, res: Response) => {

@@ -1,8 +1,11 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import type { EnglishLevel, User } from '@prisma/client';
 import { needsOnboarding } from '../domain/onboarding';
 import { AppError } from '../lib/errors';
+import type { EmailSender } from '../lib/email-sender';
 import type { GoogleProfile } from '../lib/google-oauth-client';
+import type { AppLogger } from '../lib/logger';
 import { AuthRepository } from '../repositories/auth-repository';
 import { UserRepository } from '../repositories/user-repository';
 import { TokenService } from './token-service';
@@ -10,12 +13,17 @@ import { TokenService } from './token-service';
 type PublicUser = Pick<User, 'id' | 'email' | 'handle' | 'displayName' | 'englishLevel' | 'nativeLanguage' | 'goals' | 'interests' | 'role' | 'createdAt' | 'avatarUrl'> & { needsOnboarding: boolean };
 
 const DEFAULT_ONBOARDING_LEVEL: EnglishLevel = 'B1';
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 
 export class AuthService {
   constructor(
     private readonly users: UserRepository,
     private readonly auth: AuthRepository,
     private readonly tokens: TokenService,
+    private readonly email: EmailSender | null,
+    private readonly frontendUrl: string,
+    private readonly logger: AppLogger,
+    private readonly isProduction: boolean,
   ) {}
 
   async register(input: { email: string; password: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage?: string; goals?: string[]; interests?: string[] }) {
@@ -78,6 +86,51 @@ export class AuthService {
     this.tokens.verifyRefresh(rawToken);
     const stored = await this.auth.findRefreshToken(this.tokens.hash(rawToken));
     if (stored && !stored.revokedAt) await this.auth.revokeRefreshToken(stored.id);
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email);
+    if (!user || user.isBanned) return;
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    await this.auth.createPasswordResetToken({
+      userId: user.id,
+      tokenHash: this.tokens.hash(rawToken),
+      expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+    });
+    const resetUrl = `${this.frontendUrl}/auth/reset-password?token=${rawToken}`;
+
+    if (this.email) {
+      try {
+        await this.email.send(
+          user.email,
+          'Reset your Speak Four password',
+          `<p>Someone requested a password reset for this account.</p><p><a href="${resetUrl}">Reset your password</a></p><p>This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>`,
+        );
+      } catch (error) {
+        this.logger.error({ err: error, userId: user.id }, 'Failed to send password reset email');
+      }
+    } else if (this.isProduction) {
+      this.logger.warn({ userId: user.id }, 'Password reset requested but no email provider is configured');
+    } else {
+      this.logger.info({ resetUrl }, 'Password reset link (email delivery is not configured)');
+    }
+  }
+
+  async resetPassword(rawToken: string, newPassword: string): Promise<void> {
+    const stored = await this.auth.findPasswordResetToken(this.tokens.hash(rawToken));
+    if (!stored || stored.usedAt || stored.expiresAt <= new Date()) {
+      throw new AppError(400, 'INVALID_RESET_TOKEN', 'This password reset link is invalid or has expired');
+    }
+    const user = await this.users.findById(stored.userId);
+    if (!user || user.isBanned) {
+      throw new AppError(400, 'INVALID_RESET_TOKEN', 'This password reset link is invalid or has expired');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.users.updatePasswordHash(user.id, passwordHash);
+    await this.auth.usePasswordResetToken(stored.id);
+    await this.auth.revokeAllRefreshTokens(user.id);
   }
 
   private async issuePair(user: Pick<User, 'id' | 'englishLevel'>) {

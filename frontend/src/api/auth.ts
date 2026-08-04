@@ -30,3 +30,11 @@ export async function getAuthProviders(): Promise<{ google: boolean }> {
 export function googleSignInUrl(): string {
   return `${API_URL}/auth/google`;
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await http.post('/auth/forgot-password', { email });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await http.post('/auth/reset-password', { token, newPassword });
+}

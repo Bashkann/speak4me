@@ -7,7 +7,7 @@ import type { AuthRepository } from '../../src/repositories/auth-repository';
 import type { UserRepository } from '../../src/repositories/user-repository';
 import { AuthService } from '../../src/services/auth-service';
 import { TokenService } from '../../src/services/token-service';
-import { testConfig } from '../helpers';
+import { testConfig, testLogger } from '../helpers';
 
 class MemoryUsers {
   values: User[] = [];
@@ -58,6 +58,10 @@ describe('auth HTTP flow', () => {
       users as unknown as UserRepository,
       storedTokens as unknown as AuthRepository,
       new TokenService(testConfig),
+      null,
+      'http://localhost:5173',
+      testLogger,
+      false,
     );
     const controller = new AuthController(service, null, 'http://localhost:5173', false);
     const app = express();

@@ -8,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 import type { PrismaClient } from '@prisma/client';
 import type { AppConfig } from './config';
 import { AuthController } from './controllers/auth-controller';
+import { ResendEmailSender } from './lib/email-sender';
 import { HttpGoogleOAuthClient } from './lib/google-oauth-client';
 import { ChatController } from './controllers/chat-controller';
 import { AdminController } from './controllers/admin-controller';
@@ -61,7 +62,11 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const publisher = new RealtimePublisher();
   const presence = new PresenceRegistry();
   const tokenService = new TokenService(config);
-  const authService = new AuthService(users, authRepository, tokenService);
+  const frontendUrl = (config.FRONTEND_URL ?? config.CORS_ORIGIN[0]!).replace(/\/+$/, '');
+  const emailSender = config.RESEND_API_KEY && config.RESEND_FROM_EMAIL
+    ? new ResendEmailSender({ apiKey: config.RESEND_API_KEY, fromEmail: config.RESEND_FROM_EMAIL })
+    : null;
+  const authService = new AuthService(users, authRepository, tokenService, emailSender, frontendUrl, logger, config.NODE_ENV === 'production');
   const meService = new MeService(users);
   const roomService = new RoomService(roomRepository, config);
   const socialService = new SocialService(socialRepository, presence);
@@ -78,7 +83,6 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
         redirectUri: config.GOOGLE_REDIRECT_URI,
       })
     : null;
-  const frontendUrl = (config.FRONTEND_URL ?? config.CORS_ORIGIN[0]!).replace(/\/+$/, '');
 
   const controllers = {
     auth: new AuthController(authService, googleOAuthClient, frontendUrl, config.NODE_ENV === 'production'),

@@ -78,6 +78,7 @@ model User {
   reportsMade      Report[]          @relation("ReportsMade")
   reportsReceived  Report[]          @relation("ReportsReceived")
   refreshTokens    RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   roundsAsSpeaker  RoomRound[]       @relation("RoundSpeaker")
   roundsAsListener RoomRound[]       @relation("RoundListener")
   friendshipsSent  Friendship[]      @relation("FriendshipRequester")
@@ -264,6 +265,18 @@ model RefreshToken {
   tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Brand } from '../components/Brand';
 import { getAuthProviders, googleSignInUrl, login } from '../api/auth';
 import { getApiErrorMessage } from '../lib/api-error';
@@ -155,6 +155,9 @@ export function AuthPage() {
                   <motion.div animate={loginErrors.password ? { x: [0, -5, 4, -3, 0] } : { x: 0 }} transition={{ duration: reducedMotion ? 0 : 0.28 }}>
                     <FloatingField id="password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)} onChange={(event) => { setPassword(event.target.value); setLoginErrors((current) => ({ ...current, password: undefined })); mutation.reset(); }} error={loginErrors.password} endAdornment={<motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => setShowPassword((value) => !value)} className="min-w-14 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}><AnimatePresence mode="wait" initial={false}><motion.span key={showPassword ? 'hide' : 'show'} initial={{ opacity: 0, y: reducedMotion ? 0 : 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -3 }} transition={{ duration: 0.12 }}>{showPassword ? 'Hide' : 'Show'}</motion.span></AnimatePresence></motion.button>} />
                   </motion.div>
+                  <div className="flex justify-end pt-1">
+                    <Link to="/auth/forgot-password" className="text-xs font-bold text-brand-700">Forgot password?</Link>
+                  </div>
                   <div className="min-h-[3.6rem] pt-1">
                     <AnimatePresence initial={false}>{mutation.isError && <motion.div role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{getApiErrorMessage(mutation.error, 'Unable to sign in.')}</motion.div>}</AnimatePresence>
                   </div>

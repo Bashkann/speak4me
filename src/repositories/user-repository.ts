@@ -37,6 +37,10 @@ export class UserRepository {
     return this.db.user.update({ where: { id }, data });
   }
 
+  updatePasswordHash(id: string, passwordHash: string): Promise<User> {
+    return this.db.user.update({ where: { id }, data: { passwordHash } });
+  }
+
   async stats(userId: string) {
     const rooms = await this.db.room.findMany({
       where: { status: 'finished', participants: { some: { userId } } },

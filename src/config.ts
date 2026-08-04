@@ -45,6 +45,8 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().min(3).optional(),
   MATCHMAKING_INTERVAL_MS: z.coerce.number().int().positive().default(3000),
   MATCHMAKING_WIDEN_AFTER_SEC: z.coerce.number().int().positive().default(120),
   READY_COUNTDOWN_SEC: z.coerce.number().int().nonnegative().default(5),
@@ -71,6 +73,12 @@ const envSchema = z.object({
   if (googleConfigured) {
     for (const key of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as const) {
       if (!config[key]) context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} is required once any Google OAuth variable is set` });
+    }
+  }
+  const resendConfigured = Boolean(config.RESEND_API_KEY || config.RESEND_FROM_EMAIL);
+  if (resendConfigured) {
+    for (const key of ['RESEND_API_KEY', 'RESEND_FROM_EMAIL'] as const) {
+      if (!config[key]) context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} is required once any Resend variable is set` });
     }
   }
   if (config.NODE_ENV !== 'production') return;

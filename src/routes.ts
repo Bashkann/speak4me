@@ -52,6 +52,8 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.get('/auth/providers', controllers.auth.providers);
   api.get('/auth/google', authLimit, controllers.auth.googleStart);
   api.get('/auth/google/callback', authLimit, asyncHandler(controllers.auth.googleCallback));
+  api.post('/auth/forgot-password', authLimit, asyncHandler(controllers.auth.forgotPassword));
+  api.post('/auth/reset-password', authLimit, asyncHandler(controllers.auth.resetPassword));
 
   api.use(authenticate, userLimit);
   api.get('/me', asyncHandler(controllers.me.get));
