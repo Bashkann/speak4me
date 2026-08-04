@@ -35,7 +35,7 @@ describe('createSocket', () => {
 
   it('uses the newest store token for manager reconnect attempts', () => {
     useAuthStore.getState().setSession({
-      user: { id: 'user-1', email: 'learner@example.com', handle: 'learner', displayName: 'Learner', englishLevel: 'B1', nativeLanguage: null, goals: [], interests: [], role: 'USER' },
+      user: { id: 'user-1', email: 'learner@example.com', handle: 'learner', displayName: 'Learner', englishLevel: 'B1', nativeLanguage: null, goals: [], interests: [], role: 'USER', avatarUrl: null, needsOnboarding: false },
       accessToken: 'old-access',
       refreshToken: 'refresh-token',
     });

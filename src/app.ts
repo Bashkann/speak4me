@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
@@ -7,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 import type { PrismaClient } from '@prisma/client';
 import type { AppConfig } from './config';
 import { AuthController } from './controllers/auth-controller';
+import { HttpGoogleOAuthClient } from './lib/google-oauth-client';
 import { ChatController } from './controllers/chat-controller';
 import { AdminController } from './controllers/admin-controller';
 import { MatchmakingController } from './controllers/matchmaking-controller';
@@ -69,9 +71,17 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const matchmakingService = new MatchmakingService(matchmakingRepository, publisher, config, logger);
   const coordinator = new RoomCoordinator(roomRepository, roomService, voiceService, publisher, config, logger);
   const adminService = new AdminService(adminRepository, coordinator);
+  const googleOAuthClient = config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET && config.GOOGLE_REDIRECT_URI
+    ? new HttpGoogleOAuthClient({
+        clientId: config.GOOGLE_CLIENT_ID,
+        clientSecret: config.GOOGLE_CLIENT_SECRET,
+        redirectUri: config.GOOGLE_REDIRECT_URI,
+      })
+    : null;
+  const frontendUrl = (config.FRONTEND_URL ?? config.CORS_ORIGIN[0]!).replace(/\/+$/, '');
 
   const controllers = {
-    auth: new AuthController(authService),
+    auth: new AuthController(authService, googleOAuthClient, frontendUrl, config.NODE_ENV === 'production'),
     chat: new ChatController(chatService),
     admin: new AdminController(adminService),
     me: new MeController(meService),
@@ -89,6 +99,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: '32kb' }));
+  app.use(cookieParser());
   app.use(pinoHttp({
     logger,
     genReqId: (req, res) => {

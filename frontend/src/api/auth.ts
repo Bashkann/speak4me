@@ -1,4 +1,4 @@
-import { http } from '../lib/http';
+import { http, API_URL } from '../lib/http';
 import type { AuthResponse, EnglishLevel } from '../types/api';
 
 export interface RegisterInput {
@@ -21,4 +21,12 @@ export async function login(input: { email: string; password: string }): Promise
 
 export async function logout(refreshToken: string): Promise<void> {
   await http.post('/auth/logout', { refreshToken });
+}
+
+export async function getAuthProviders(): Promise<{ google: boolean }> {
+  return (await http.get<{ google: boolean }>('/auth/providers')).data;
+}
+
+export function googleSignInUrl(): string {
+  return `${API_URL}/auth/google`;
 }

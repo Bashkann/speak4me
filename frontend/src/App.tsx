@@ -2,8 +2,11 @@ import { lazy, Suspense } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { PublicOnly, RequireAuth } from './components/RequireAuth';
+import { RequireOnboarding } from './components/RequireOnboarding';
 import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { HomePage } from './pages/HomePage';
 import { WaitingPage } from './pages/WaitingPage';
@@ -28,7 +31,10 @@ export function App() {
         <Route element={<PublicOnly />}>
           <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
         </Route>
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route element={<RequireAuth />}>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route element={<RequireOnboarding />}>
           <Route element={<AuthenticatedRealtime />}>
             <Route path="/rooms/:roomId" element={<Suspense fallback={<FullPageLoader label="Opening your room…" />}><RoomPage /></Suspense>} />
             <Route element={<AppShell />}>
@@ -43,6 +49,7 @@ export function App() {
             </Route>
             <Route path="/waiting" element={<PageTransition><WaitingPage /></PageTransition>} />
             </Route>
+          </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

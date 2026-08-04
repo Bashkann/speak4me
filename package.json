@@ -29,6 +29,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1101.0",
     "@prisma/client": "^6.8.2",
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
@@ -44,6 +45,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",

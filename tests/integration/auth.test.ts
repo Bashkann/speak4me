@@ -23,6 +23,8 @@ class MemoryUsers {
       nativeLanguage: data.nativeLanguage ?? null,
       goals: data.goals ?? [],
       interests: data.interests ?? [],
+      googleId: null,
+      avatarUrl: null,
       role: 'USER',
       suspendedAt: null,
       isBanned: false,
@@ -57,7 +59,7 @@ describe('auth HTTP flow', () => {
       storedTokens as unknown as AuthRepository,
       new TokenService(testConfig),
     );
-    const controller = new AuthController(service);
+    const controller = new AuthController(service, null, 'http://localhost:5173', false);
     const app = express();
     app.use(express.json());
     app.post('/register', asyncHandler(controller.register));

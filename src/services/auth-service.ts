@@ -1,11 +1,15 @@
 import bcrypt from 'bcryptjs';
 import type { EnglishLevel, User } from '@prisma/client';
+import { needsOnboarding } from '../domain/onboarding';
 import { AppError } from '../lib/errors';
+import type { GoogleProfile } from '../lib/google-oauth-client';
 import { AuthRepository } from '../repositories/auth-repository';
 import { UserRepository } from '../repositories/user-repository';
 import { TokenService } from './token-service';
 
-type PublicUser = Pick<User, 'id' | 'email' | 'handle' | 'displayName' | 'englishLevel' | 'nativeLanguage' | 'goals' | 'interests' | 'role' | 'createdAt'>;
+type PublicUser = Pick<User, 'id' | 'email' | 'handle' | 'displayName' | 'englishLevel' | 'nativeLanguage' | 'goals' | 'interests' | 'role' | 'createdAt' | 'avatarUrl'> & { needsOnboarding: boolean };
+
+const DEFAULT_ONBOARDING_LEVEL: EnglishLevel = 'B1';
 
 export class AuthService {
   constructor(
@@ -26,9 +30,33 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const user = await this.users.findByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
     }
+    if (user.isBanned) throw new AppError(403, 'USER_BANNED', 'This account is banned');
+    if (user.suspendedAt) throw new AppError(403, 'USER_SUSPENDED', 'This account is suspended');
+    return { user: this.publicUser(user), ...(await this.issuePair(user)) };
+  }
+
+  async loginWithGoogle(profile: GoogleProfile) {
+    if (!profile.emailVerified) {
+      throw new AppError(403, 'EMAIL_NOT_VERIFIED', 'This Google account email is not verified');
+    }
+
+    let user = await this.users.findByGoogleId(profile.googleId);
+    if (!user) {
+      const existing = await this.users.findByEmail(profile.email);
+      user = existing
+        ? await this.users.linkGoogleAccount(existing.id, { googleId: profile.googleId, avatarUrl: existing.avatarUrl ?? profile.avatarUrl })
+        : await this.users.create({
+            email: profile.email,
+            displayName: profile.displayName,
+            englishLevel: DEFAULT_ONBOARDING_LEVEL,
+            googleId: profile.googleId,
+            avatarUrl: profile.avatarUrl ?? undefined,
+          });
+    }
+
     if (user.isBanned) throw new AppError(403, 'USER_BANNED', 'This account is banned');
     if (user.suspendedAt) throw new AppError(403, 'USER_SUSPENDED', 'This account is suspended');
     return { user: this.publicUser(user), ...(await this.issuePair(user)) };
@@ -64,7 +92,7 @@ export class AuthService {
   }
 
   private publicUser(user: User): PublicUser {
-    const { id, email, handle, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt } = user;
-    return { id, email, handle, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt };
+    const { id, email, handle, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt, avatarUrl } = user;
+    return { id, email, handle, displayName, englishLevel, nativeLanguage, goals, interests, role, createdAt, avatarUrl, needsOnboarding: needsOnboarding(user) };
   }
 }

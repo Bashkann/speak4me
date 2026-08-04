@@ -49,10 +49,24 @@ registry.registerPath({
   request: { body: { content: { 'application/json': { schema: logoutSchema } } } },
   responses: { 204: { description: 'Logged out' }, ...errors },
 });
+registry.registerPath({
+  method: 'get', path: '/api/auth/providers', tags: ['Auth'], summary: 'Check which social sign-in providers are configured',
+  responses: { 200: json(z.object({ google: z.boolean() })) },
+});
+registry.registerPath({
+  method: 'get', path: '/api/auth/google', tags: ['Auth'], summary: 'Start Google sign-in',
+  responses: { 302: { description: 'Redirect to Google' }, 404: json(errorSchema, 'Google sign-in is not configured') },
+});
+registry.registerPath({
+  method: 'get', path: '/api/auth/google/callback', tags: ['Auth'], summary: 'Google sign-in callback',
+  request: { query: z.object({ code: z.string().optional(), state: z.string().optional() }) },
+  responses: { 302: { description: 'Redirect to the frontend with tokens or an error' } },
+});
 
 const userSchema = z.object({
   id: z.string().uuid(), email: z.string().email(), handle: z.string(), displayName: z.string(), englishLevel: englishLevelSchema,
   nativeLanguage: z.string().nullable(), goals: z.array(z.string()), interests: z.array(z.string()), role: z.enum(['USER', 'ADMIN']), createdAt: z.string().datetime(),
+  avatarUrl: z.string().nullable(), needsOnboarding: z.boolean(),
 });
 registry.registerPath({ method: 'get', path: '/api/me', tags: ['Me'], security, responses: { 200: json(userSchema), ...errors } });
 registry.registerPath({

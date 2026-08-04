@@ -12,7 +12,15 @@ export class UserRepository {
     return this.db.user.findUnique({ where: { email } });
   }
 
-  async create(data: Pick<User, 'email' | 'passwordHash' | 'displayName' | 'englishLevel'> & Partial<Pick<User, 'nativeLanguage' | 'goals' | 'interests'>>): Promise<User> {
+  findByGoogleId(googleId: string): Promise<User | null> {
+    return this.db.user.findUnique({ where: { googleId } });
+  }
+
+  linkGoogleAccount(id: string, data: { googleId: string; avatarUrl: string | null }): Promise<User> {
+    return this.db.user.update({ where: { id }, data });
+  }
+
+  async create(data: Pick<User, 'email' | 'displayName' | 'englishLevel'> & Partial<Pick<User, 'passwordHash' | 'nativeLanguage' | 'goals' | 'interests' | 'googleId' | 'avatarUrl'>>): Promise<User> {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
         return await this.db.user.create({ data: { ...data, handle: createHandle(data.displayName) } });

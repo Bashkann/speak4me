@@ -49,6 +49,9 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.post('/auth/login', authLimit, asyncHandler(controllers.auth.login));
   api.post('/auth/refresh', authLimit, asyncHandler(controllers.auth.refresh));
   api.post('/auth/logout', authLimit, asyncHandler(controllers.auth.logout));
+  api.get('/auth/providers', controllers.auth.providers);
+  api.get('/auth/google', authLimit, controllers.auth.googleStart);
+  api.get('/auth/google/callback', authLimit, asyncHandler(controllers.auth.googleCallback));
 
   api.use(authenticate, userLimit);
   api.get('/me', asyncHandler(controllers.me.get));
