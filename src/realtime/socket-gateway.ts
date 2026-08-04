@@ -9,7 +9,7 @@ import { PresenceRegistry } from '../services/presence-registry';
 import { SocialService } from '../services/social-service';
 import { TokenService } from '../services/token-service';
 import { RealtimePublisher } from './publisher';
-import { socketReadSchema, socketSendMessageSchema, typingSchema } from '../schemas/chat';
+import { socketDeleteMessageSchema, socketReadSchema, socketSendMessageSchema, typingSchema } from '../schemas/chat';
 
 const joinSchema = z.object({ roomId: z.string().uuid() });
 const roomActionSchema = z.object({ roomId: z.string().uuid() });
@@ -155,6 +155,15 @@ export function configureSockets(
       try {
         const { conversationId } = socketReadSchema.parse(payload);
         await chatService.read(userId, conversationId);
+      } catch (error) {
+        emitSocketError(socket, error);
+      }
+    });
+
+    socket.on('message_delete', async (payload: unknown) => {
+      try {
+        const { conversationId, messageId } = socketDeleteMessageSchema.parse(payload);
+        await chatService.deleteMessage(userId, conversationId, messageId);
       } catch (error) {
         emitSocketError(socket, error);
       }

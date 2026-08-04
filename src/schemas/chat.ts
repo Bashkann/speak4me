@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const conversationParamsSchema = z.object({ id: z.string().uuid() });
+export const messageParamsSchema = z.object({ id: z.string().uuid(), messageId: z.string().uuid() });
 export const openConversationSchema = z.object({ userId: z.string().uuid() });
 export const messageHistorySchema = z.object({
   before: z.coerce.date().optional(),
@@ -16,3 +17,4 @@ export const typingSchema = z.object({
 });
 export const socketSendMessageSchema = sendMessageSchema.extend({ conversationId: z.string().uuid() });
 export const socketReadSchema = z.object({ conversationId: z.string().uuid() });
+export const socketDeleteMessageSchema = z.object({ conversationId: z.string().uuid(), messageId: z.string().uuid() });

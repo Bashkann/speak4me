@@ -130,6 +130,7 @@ model Message {
   imageUrl       String?
   createdAt      DateTime     @default(now())
   readAt         DateTime?
+  deletedAt      DateTime?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 

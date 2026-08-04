@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getConversations, getMessages, markConversationRead, sendMessage, type Message, type MessageHistory } from '../api/chat';
+import { deleteMessage, getConversations, getMessages, markConversationRead, sendMessage, type Message, type MessageHistory } from '../api/chat';
 import { EmptyState } from '../components/EmptyState';
 import { PanelSkeleton } from '../components/LoadingSkeleton';
 import { useChatRealtime } from '../components/ChatRealtimeProvider';
@@ -50,6 +50,18 @@ export function MessagesPage() {
       void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: (error) => toast('error', getApiErrorMessage(error, 'Your message could not be sent.')),
+  });
+
+  const deleter = useMutation({
+    mutationFn: (messageId: string) => deleteMessage(conversationId!, messageId),
+    onSuccess: (deleted) => {
+      queryClient.setQueryData<MessageHistory>(['messages', conversationId], (current) => current ? {
+        ...current,
+        items: current.items.map((item) => item.id === deleted.id ? deleted : item),
+      } : current);
+      void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error) => toast('error', getApiErrorMessage(error, 'This message could not be deleted.')),
   });
 
   useEffect(() => {
@@ -124,7 +136,7 @@ export function MessagesPage() {
             {conversations.data?.length === 0 && <EmptyState compact icon="✉" mood="thinking" title="No conversations yet" detail="Open a chat from your Friends page." action={<button className="primary-button" onClick={() => navigate('/friends')}>Find friends</button>} />}
             <div className="space-y-1">{conversations.data?.map((conversation) => {
               const isOnline = realtime.online.get(conversation.partner.id);
-              return <button type="button" key={conversation.id} onClick={() => navigate(`/messages/${conversation.id}`)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${conversation.id === conversationId ? 'bg-brand-50' : 'hover:bg-slate-50'}`}><Avatar name={conversation.partner.displayName} online={isOnline} /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-bold text-ink">{conversation.partner.displayName}</p><time className="shrink-0 text-[10px] font-semibold text-slate-400">{conversation.lastMessage ? compactTime(conversation.lastMessage.createdAt) : ''}</time></div><div className="mt-1 flex items-center gap-2"><p className={`truncate text-xs ${conversation.unreadCount ? 'font-bold text-ink' : 'text-slate-500'}`}>{conversation.lastMessage?.body || (conversation.lastMessage?.imageUrl ? 'Photo' : 'Start the conversation')}</p>{conversation.unreadCount > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-extrabold text-white">{Math.min(conversation.unreadCount, 99)}</span>}</div></div></button>;
+              return <button type="button" key={conversation.id} onClick={() => navigate(`/messages/${conversation.id}`)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${conversation.id === conversationId ? 'bg-brand-50' : 'hover:bg-slate-50'}`}><Avatar name={conversation.partner.displayName} online={isOnline} /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-bold text-ink">{conversation.partner.displayName}</p><time className="shrink-0 text-[10px] font-semibold text-slate-400">{conversation.lastMessage ? compactTime(conversation.lastMessage.createdAt) : ''}</time></div><div className="mt-1 flex items-center gap-2"><p className={`truncate text-xs ${conversation.unreadCount ? 'font-bold text-ink' : 'text-slate-500'}`}>{conversation.lastMessage?.deletedAt ? 'Message deleted' : conversation.lastMessage?.body || (conversation.lastMessage?.imageUrl ? 'Photo' : 'Start the conversation')}</p>{conversation.unreadCount > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-extrabold text-white">{Math.min(conversation.unreadCount, 99)}</span>}</div></div></button>;
             })}</div>
           </div>
         </aside>
@@ -137,7 +149,7 @@ export function MessagesPage() {
                 {messages.isLoading && <div className="space-y-3"><div className="h-12 w-2/3 animate-pulse rounded-2xl bg-slate-100" /><div className="ml-auto h-14 w-3/4 animate-pulse rounded-2xl bg-brand-100" /></div>}
                 {messages.isError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{getApiErrorMessage(messages.error, 'Could not load messages.')}</p>}
                 {messages.data?.nextBefore && <div className="mb-5 text-center"><button type="button" disabled={older.isPending} onClick={() => older.mutate()} className="rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">{older.isPending ? 'Loading…' : 'Load older messages'}</button></div>}
-                <div className="space-y-2"><AnimatePresence initial={false}>{messages.data?.items.map((message) => <MessageBubble key={message.id} message={message} own={message.senderId === user?.id} reducedMotion={Boolean(reducedMotion)} />)}</AnimatePresence></div>
+                <div className="space-y-2"><AnimatePresence initial={false}>{messages.data?.items.map((message) => <MessageBubble key={message.id} message={message} own={message.senderId === user?.id} reducedMotion={Boolean(reducedMotion)} onDelete={() => deleter.mutate(message.id)} deleting={deleter.isPending && deleter.variables === message.id} />)}</AnimatePresence></div>
                 {realtime.typing.get(conversationId) && realtime.typing.get(conversationId) !== user?.id && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 flex items-center gap-1 text-xs font-semibold text-slate-400"><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:120ms]" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:240ms]" /><span className="ml-1">typing</span></motion.div>}
                 <div ref={bottomRef} />
               </div>
@@ -150,9 +162,43 @@ export function MessagesPage() {
   );
 }
 
-function MessageBubble({ message, own, reducedMotion }: { message: Message; own: boolean; reducedMotion: boolean }) {
+function MessageBubble({ message, own, reducedMotion, onDelete, deleting }: { message: Message; own: boolean; reducedMotion: boolean; onDelete: () => void; deleting: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  return <><motion.article initial={{ opacity: 0, y: reducedMotion ? 0 : 7, x: reducedMotion ? 0 : own ? 8 : -8 }} animate={{ opacity: 1, y: 0, x: 0 }} className={`flex ${own ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[70%] ${own ? 'rounded-br-md bg-brand-700 text-white' : 'rounded-bl-md bg-white text-ink'}`}>{message.imageUrl && <button type="button" onClick={() => setExpanded(true)} className="mb-2 block overflow-hidden rounded-xl"><img src={message.imageUrl} alt="Shared in conversation" loading="lazy" className="max-h-72 w-full object-cover" /></button>}{message.body && <p className="whitespace-pre-wrap break-words text-sm leading-5">{message.body}</p>}<div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${own ? 'text-brand-200' : 'text-slate-400'}`}><time dateTime={message.createdAt}>{compactTime(message.createdAt)}</time>{own && <span aria-label={message.readAt ? 'Read' : 'Sent'}>{message.readAt ? '✓✓' : '✓'}</span>}</div></div></motion.article><AnimatePresence>{expanded && message.imageUrl && <motion.button type="button" aria-label="Close image preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExpanded(false)} className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-5"><img src={message.imageUrl} alt="Expanded shared image" className="max-h-full max-w-full rounded-2xl object-contain" /></motion.button>}</AnimatePresence></>;
+  const [confirming, setConfirming] = useState(false);
+  const deleted = Boolean(message.deletedAt);
+  const transition = { duration: reducedMotion ? 0.05 : 0.22 };
+
+  return <>
+    <motion.article layout="position" transition={transition} initial={{ opacity: 0, y: reducedMotion ? 0 : 7, x: reducedMotion ? 0 : own ? 8 : -8 }} animate={{ opacity: 1, y: 0, x: 0 }} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
+      <div className="max-w-[82%] sm:max-w-[70%]">
+        <AnimatePresence mode="wait" initial={false}>
+          {deleted ? (
+            <motion.div key="deleted" layout transition={transition} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`rounded-2xl border border-dashed px-3.5 py-2.5 text-xs italic text-slate-400 ${own ? 'rounded-br-md border-slate-200' : 'rounded-bl-md border-slate-200'}`}>
+              Message deleted
+            </motion.div>
+          ) : (
+            <motion.div key="content" layout transition={transition} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`rounded-2xl px-3.5 py-2.5 shadow-sm ${own ? 'rounded-br-md bg-brand-700 text-white' : 'rounded-bl-md bg-white text-ink'}`}>
+              {message.imageUrl && <button type="button" onClick={() => setExpanded(true)} className="mb-2 block overflow-hidden rounded-xl"><img src={message.imageUrl} alt="Shared in conversation" loading="lazy" className="max-h-72 w-full object-cover" /></button>}
+              {message.body && <p className="whitespace-pre-wrap break-words text-sm leading-5">{message.body}</p>}
+              {confirming && (
+                <div className={`mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-1.5 text-[11px] font-semibold ${own ? 'border-white/20 text-brand-100' : 'border-slate-100 text-slate-500'}`}>
+                  <span>Delete this message?</span>
+                  <button type="button" onClick={onDelete} disabled={deleting} className={`font-bold underline ${own ? 'text-white' : 'text-red-600'}`}>{deleting ? 'Deleting…' : 'Yes, delete'}</button>
+                  <button type="button" onClick={() => setConfirming(false)} disabled={deleting} className={`font-bold underline ${own ? 'text-brand-200' : 'text-slate-400'}`}>Cancel</button>
+                </div>
+              )}
+              <div className={`mt-1 flex items-center justify-end gap-2 text-[10px] ${own ? 'text-brand-200' : 'text-slate-400'}`}>
+                {own && !confirming && <button type="button" onClick={() => setConfirming(true)} disabled={deleting} className="rounded font-bold text-brand-200 hover:text-white" aria-label="Delete message">Delete</button>}
+                <time dateTime={message.createdAt}>{compactTime(message.createdAt)}</time>
+                {own && <span aria-label={message.readAt ? 'Read' : 'Sent'}>{message.readAt ? '✓✓' : '✓'}</span>}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.article>
+    <AnimatePresence>{expanded && message.imageUrl && <motion.button type="button" aria-label="Close image preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExpanded(false)} className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-5"><img src={message.imageUrl} alt="Expanded shared image" className="max-h-full max-w-full rounded-2xl object-contain" /></motion.button>}</AnimatePresence>
+  </>;
 }
 
 function Avatar({ name, online }: { name: string; online?: boolean }) { return <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-100 font-display text-xs font-extrabold text-brand-800">{initials(name)}{online !== undefined && <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${online ? 'bg-brand-500' : 'bg-slate-300'}`} />}</span>; }

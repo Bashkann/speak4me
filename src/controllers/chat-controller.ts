@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { conversationParamsSchema, messageHistorySchema, openConversationSchema, sendMessageSchema } from '../schemas/chat';
+import { conversationParamsSchema, messageHistorySchema, messageParamsSchema, openConversationSchema, sendMessageSchema } from '../schemas/chat';
 import { ChatService } from '../services/chat-service';
 
 export class ChatController {
@@ -29,5 +29,10 @@ export class ChatController {
   read = async (req: Request, res: Response) => {
     const { id } = conversationParamsSchema.parse(req.params);
     res.json(await this.service.read(req.auth!.userId, id));
+  };
+
+  deleteMessage = async (req: Request, res: Response) => {
+    const { id, messageId } = messageParamsSchema.parse(req.params);
+    res.json(await this.service.deleteMessage(req.auth!.userId, id, messageId));
   };
 }

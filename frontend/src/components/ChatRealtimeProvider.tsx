@@ -37,6 +37,13 @@ export function ChatRealtimeProvider({ children }: PropsWithChildren) {
       } : current);
       queryClient.setQueryData<Conversation[]>(['conversations'], (current) => current?.map((conversation) => conversation.id === conversationId && conversation.lastMessage?.id === messageId ? { ...conversation, lastMessage: { ...conversation.lastMessage, readAt } } : conversation));
     });
+    next.on('message_deleted', ({ conversationId, messageId, deletedAt }: { conversationId: string; messageId: string; deletedAt: string }) => {
+      queryClient.setQueryData<MessageHistory>(['messages', conversationId], (current) => current ? {
+        ...current,
+        items: current.items.map((message) => message.id === messageId ? { ...message, body: '', imageUrl: null, deletedAt } : message),
+      } : current);
+      queryClient.setQueryData<Conversation[]>(['conversations'], (current) => current?.map((conversation) => conversation.id === conversationId && conversation.lastMessage?.id === messageId ? { ...conversation, lastMessage: { ...conversation.lastMessage, body: '', imageUrl: null, deletedAt } } : conversation));
+    });
     next.on('typing', ({ conversationId, userId, isTyping }: { conversationId: string; userId: string; isTyping: boolean }) => {
       setTyping((current) => {
         const updated = new Map(current);

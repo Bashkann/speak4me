@@ -9,6 +9,7 @@ export interface Message {
   imageUrl: string | null;
   createdAt: string;
   readAt: string | null;
+  deletedAt: string | null;
 }
 
 export interface Conversation {
@@ -42,4 +43,8 @@ export async function sendMessage(conversationId: string, body: string, uploadId
 
 export async function markConversationRead(conversationId: string): Promise<void> {
   await http.post(`/conversations/${conversationId}/read`);
+}
+
+export async function deleteMessage(conversationId: string, messageId: string): Promise<Message> {
+  return (await http.delete<Message>(`/conversations/${conversationId}/messages/${messageId}`)).data;
 }

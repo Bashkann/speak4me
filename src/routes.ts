@@ -83,6 +83,7 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.post('/conversations', asyncHandler(controllers.chat.open));
   api.get('/conversations/:id/messages', asyncHandler(controllers.chat.history));
   api.post('/conversations/:id/messages', messageLimit, asyncHandler(controllers.chat.send));
+  api.delete('/conversations/:id/messages/:messageId', asyncHandler(controllers.chat.deleteMessage));
   api.post('/conversations/:id/read', asyncHandler(controllers.chat.read));
   api.get('/uploads/config', asyncHandler(controllers.uploads.config));
   api.post('/uploads/sign', messageLimit, asyncHandler(controllers.uploads.sign));

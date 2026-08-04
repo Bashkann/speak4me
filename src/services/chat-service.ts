@@ -74,6 +74,23 @@ export class ChatService {
     return { messages };
   }
 
+  async deleteMessage(userId: string, conversationId: string, messageId: string) {
+    const conversation = await this.authorizedConversation(userId, conversationId);
+    const peerId = this.peerId(conversation, userId);
+    const message = await this.chat.findMessage(messageId);
+    if (!message || message.conversationId !== conversationId) {
+      throw new AppError(404, 'MESSAGE_NOT_FOUND', 'Message not found');
+    }
+    if (message.senderId !== userId) {
+      throw new AppError(403, 'MESSAGE_FORBIDDEN', 'You can only delete your own messages');
+    }
+    const deleted = message.deletedAt ? message : await this.chat.softDeleteMessage(messageId);
+    const payload = { conversationId, messageId: deleted.id, deletedAt: deleted.deletedAt };
+    this.publisher.chatUser(peerId, 'message_deleted', payload);
+    this.publisher.chatUser(userId, 'message_deleted', payload);
+    return deleted;
+  }
+
   async peer(userId: string, conversationId: string) {
     const conversation = await this.authorizedConversation(userId, conversationId);
     const peerId = this.peerId(conversation, userId);

@@ -5,7 +5,7 @@ import { englishLevelSchema, errorSchema, idParamsSchema, paginationSchema } fro
 import { updateMeSchema } from './schemas/me';
 import { createRoomSchema, joinRoomSchema, reportSchema } from './schemas/rooms';
 import { adminCreateTopicSchema, adminUpdateReportSchema, adminUpdateTopicSchema, adminUpdateUserSchema, adminUsersQuerySchema } from './schemas/admin';
-import { conversationParamsSchema, messageHistorySchema, openConversationSchema, sendMessageSchema } from './schemas/chat';
+import { conversationParamsSchema, messageHistorySchema, messageParamsSchema, openConversationSchema, sendMessageSchema } from './schemas/chat';
 import { friendRequestParamsSchema, friendUserParamsSchema, userSearchSchema, userTargetSchema } from './schemas/social';
 import { signUploadSchema } from './schemas/uploads';
 
@@ -153,6 +153,7 @@ const publicProfileSchema = z.object({ id: z.string().uuid(), handle: z.string()
 const messageSchema = z.object({
   id: z.string().uuid(), conversationId: z.string().uuid(), senderId: z.string().uuid(), body: z.string(),
   imageUrl: z.string().url().nullable(), createdAt: z.string().datetime(), readAt: z.string().datetime().nullable(),
+  deletedAt: z.string().datetime().nullable(),
 });
 registry.registerPath({ method: 'get', path: '/api/friends', tags: ['Friends'], security, responses: { 200: json(z.array(publicProfileSchema.extend({ friendshipId: z.string().uuid(), online: z.boolean() }))), ...errors } });
 registry.registerPath({ method: 'get', path: '/api/friends/requests', tags: ['Friends'], security, responses: { 200: json(z.object({ incoming: z.array(z.unknown()), outgoing: z.array(z.unknown()) })), ...errors } });
@@ -168,6 +169,7 @@ registry.registerPath({ method: 'get', path: '/api/conversations', tags: ['Chat'
 registry.registerPath({ method: 'post', path: '/api/conversations', tags: ['Chat'], security, request: { body: { content: { 'application/json': { schema: openConversationSchema } } } }, responses: { 201: json(z.unknown()), ...errors } });
 registry.registerPath({ method: 'get', path: '/api/conversations/{id}/messages', tags: ['Chat'], security, request: { params: conversationParamsSchema, query: messageHistorySchema }, responses: { 200: json(z.object({ items: z.array(messageSchema), nextBefore: z.string().datetime().nullable() })), ...errors } });
 registry.registerPath({ method: 'post', path: '/api/conversations/{id}/messages', tags: ['Chat'], security, request: { params: conversationParamsSchema, body: { content: { 'application/json': { schema: sendMessageSchema } } } }, responses: { 201: json(messageSchema), ...errors } });
+registry.registerPath({ method: 'delete', path: '/api/conversations/{id}/messages/{messageId}', tags: ['Chat'], security, summary: 'Soft-delete your own message', request: { params: messageParamsSchema }, responses: { 200: json(messageSchema), ...errors, 404: json(errorSchema, 'Not found') } });
 registry.registerPath({ method: 'post', path: '/api/conversations/{id}/read', tags: ['Chat'], security, request: { params: conversationParamsSchema }, responses: { 200: json(z.unknown()), ...errors } });
 registry.registerPath({ method: 'get', path: '/api/uploads/config', tags: ['Chat'], security, responses: { 200: json(z.object({ enabled: z.boolean(), maxBytes: z.number().int(), contentTypes: z.array(z.string()) })), ...errors } });
 registry.registerPath({ method: 'post', path: '/api/uploads/sign', tags: ['Chat'], security, request: { body: { content: { 'application/json': { schema: signUploadSchema } } } }, responses: { 201: json(z.object({ uploadId: z.string().uuid(), uploadUrl: z.string().url(), publicUrl: z.string().url(), expiresAt: z.string().datetime(), headers: z.record(z.string()) })), ...errors } });
