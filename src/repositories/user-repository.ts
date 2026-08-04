@@ -1,4 +1,4 @@
-import { Prisma, type EnglishLevel, type PrismaClient, type User } from '@prisma/client';
+import { Prisma, type EnglishLevel, type PrismaClient, type User, type UserRole } from '@prisma/client';
 import { createHandle } from '../domain/social';
 
 export class UserRepository {
@@ -39,6 +39,10 @@ export class UserRepository {
 
   updatePasswordHash(id: string, passwordHash: string): Promise<User> {
     return this.db.user.update({ where: { id }, data: { passwordHash } });
+  }
+
+  setRole(id: string, role: UserRole): Promise<User> {
+    return this.db.user.update({ where: { id }, data: { role } });
   }
 
   async stats(userId: string) {

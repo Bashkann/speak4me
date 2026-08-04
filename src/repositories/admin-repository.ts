@@ -22,7 +22,7 @@ export class AdminRepository {
         { displayName: { contains: q, mode: 'insensitive' } },
       ],
     } : {};
-    const [items, total] = await this.db.$transaction([
+    const [rows, total] = await this.db.$transaction([
       this.db.user.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -35,6 +35,15 @@ export class AdminRepository {
       }),
       this.db.user.count({ where }),
     ]);
+    const sessionCounts = rows.length
+      ? await this.db.roomParticipant.groupBy({
+          by: ['userId'],
+          where: { userId: { in: rows.map((row) => row.id) }, room: { status: 'finished' } },
+          _count: { _all: true },
+        })
+      : [];
+    const sessionsByUserId = new Map(sessionCounts.map((row) => [row.userId, row._count._all]));
+    const items = rows.map((row) => ({ ...row, sessionsCompleted: sessionsByUserId.get(row.id) ?? 0 }));
     return { items, page, limit, total };
   }
 

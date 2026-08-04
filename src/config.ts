@@ -3,6 +3,11 @@ import { z } from 'zod';
 const durationPattern = /^\d+[smhd]$/;
 const postgresUrlPattern = /^postgres(?:ql)?:\/\//;
 
+const adminEmailsSchema = z.string().optional().transform((value) => {
+  if (!value) return [] as string[];
+  return [...new Set(value.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean))];
+});
+
 const corsOriginSchema = z.string().min(1).transform((value, context) => {
   const origins = [...new Set(value.split(',').map((origin) => origin.trim()).filter(Boolean))];
 
@@ -47,6 +52,7 @@ const envSchema = z.object({
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().min(3).optional(),
+  ADMIN_EMAILS: adminEmailsSchema,
   MATCHMAKING_INTERVAL_MS: z.coerce.number().int().positive().default(3000),
   MATCHMAKING_WIDEN_AFTER_SEC: z.coerce.number().int().positive().default(120),
   READY_COUNTDOWN_SEC: z.coerce.number().int().nonnegative().default(5),

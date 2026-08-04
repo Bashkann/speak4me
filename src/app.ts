@@ -66,7 +66,7 @@ export function createApplication(config: AppConfig, db: PrismaClient, logger: A
   const emailSender = config.RESEND_API_KEY && config.RESEND_FROM_EMAIL
     ? new ResendEmailSender({ apiKey: config.RESEND_API_KEY, fromEmail: config.RESEND_FROM_EMAIL })
     : null;
-  const authService = new AuthService(users, authRepository, tokenService, emailSender, frontendUrl, logger, config.NODE_ENV === 'production');
+  const authService = new AuthService(users, authRepository, tokenService, emailSender, frontendUrl, logger, config.NODE_ENV === 'production', config.ADMIN_EMAILS);
   const meService = new MeService(users);
   const roomService = new RoomService(roomRepository, config);
   const socialService = new SocialService(socialRepository, presence);

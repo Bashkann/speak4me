@@ -24,6 +24,7 @@ export class AuthService {
     private readonly frontendUrl: string,
     private readonly logger: AppLogger,
     private readonly isProduction: boolean,
+    private readonly adminEmails: string[] = [],
   ) {}
 
   async register(input: { email: string; password: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage?: string; goals?: string[]; interests?: string[] }) {
@@ -37,12 +38,13 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.users.findByEmail(email);
+    let user = await this.users.findByEmail(email);
     if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
     }
     if (user.isBanned) throw new AppError(403, 'USER_BANNED', 'This account is banned');
     if (user.suspendedAt) throw new AppError(403, 'USER_SUSPENDED', 'This account is suspended');
+    user = await this.applyAdminBootstrap(user);
     return { user: this.publicUser(user), ...(await this.issuePair(user)) };
   }
 
@@ -67,6 +69,7 @@ export class AuthService {
 
     if (user.isBanned) throw new AppError(403, 'USER_BANNED', 'This account is banned');
     if (user.suspendedAt) throw new AppError(403, 'USER_SUSPENDED', 'This account is suspended');
+    user = await this.applyAdminBootstrap(user);
     return { user: this.publicUser(user), ...(await this.issuePair(user)) };
   }
 
@@ -76,8 +79,9 @@ export class AuthService {
     if (!stored || stored.userId !== payload.sub || stored.revokedAt || stored.expiresAt <= new Date()) {
       throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Refresh token is invalid or revoked');
     }
-    const user = await this.users.findById(payload.sub);
+    let user = await this.users.findById(payload.sub);
     if (!user || user.isBanned || user.suspendedAt) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'User is unavailable');
+    user = await this.applyAdminBootstrap(user);
     await this.auth.revokeRefreshToken(stored.id);
     return this.issuePair(user);
   }
@@ -131,6 +135,11 @@ export class AuthService {
     await this.users.updatePasswordHash(user.id, passwordHash);
     await this.auth.usePasswordResetToken(stored.id);
     await this.auth.revokeAllRefreshTokens(user.id);
+  }
+
+  private async applyAdminBootstrap(user: User): Promise<User> {
+    if (user.role === 'ADMIN' || !this.adminEmails.includes(user.email)) return user;
+    return this.users.setRole(user.id, 'ADMIN');
   }
 
   private async issuePair(user: Pick<User, 'id' | 'englishLevel'>) {

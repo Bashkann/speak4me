@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import type { EnglishLevel, PasswordResetToken, RefreshToken, User } from '@prisma/client';
 import { AppError } from '../../src/lib/errors';
 import type { EmailSender } from '../../src/lib/email-sender';
@@ -21,6 +22,11 @@ class MemoryUsers {
   updatePasswordHash(id: string, passwordHash: string) {
     const user = this.values.find((item) => item.id === id)!;
     user.passwordHash = passwordHash;
+    return Promise.resolve(user);
+  }
+  setRole(id: string, role: User['role']) {
+    const user = this.values.find((item) => item.id === id)!;
+    user.role = role;
     return Promise.resolve(user);
   }
   create(data: { email: string; passwordHash?: string; displayName: string; englishLevel: EnglishLevel; googleId?: string; avatarUrl?: string }) {
@@ -85,7 +91,7 @@ class MemoryEmail implements EmailSender {
   }
 }
 
-function buildService(email: EmailSender | null = null) {
+function buildService(email: EmailSender | null = null, adminEmails: string[] = []) {
   const users = new MemoryUsers();
   const tokens = new MemoryTokens();
   const service = new AuthService(
@@ -96,6 +102,7 @@ function buildService(email: EmailSender | null = null) {
     'http://localhost:5173',
     testLogger,
     false,
+    adminEmails,
   );
   return { service, users, tokens };
 }
@@ -192,5 +199,39 @@ describe('AuthService password reset', () => {
     await tokens.createPasswordResetToken({ userId: user.id, tokenHash: new TokenService(testConfig).hash(raw), expiresAt: new Date(Date.now() - 1000) });
 
     await expect(service.resetPassword(raw, 'AnotherPassword123!')).rejects.toThrow(AppError);
+  });
+});
+
+describe('AuthService ADMIN_EMAILS bootstrap', () => {
+  it('promotes a matching email to ADMIN on successful login', async () => {
+    const passwordHash = await bcrypt.hash('Password123!', 12);
+    const { service, users } = buildService(null, ['owner@example.com']);
+    await users.create({ email: 'owner@example.com', passwordHash, displayName: 'Owner', englishLevel: 'B1' });
+
+    const result = await service.login('owner@example.com', 'Password123!');
+
+    expect(result.user.role).toBe('ADMIN');
+    expect(users.values[0]?.role).toBe('ADMIN');
+  });
+
+  it('does not promote emails outside the list', async () => {
+    const passwordHash = await bcrypt.hash('Password123!', 12);
+    const { service, users } = buildService(null, ['owner@example.com']);
+    await users.create({ email: 'someone-else@example.com', passwordHash, displayName: 'Someone', englishLevel: 'B1' });
+
+    const result = await service.login('someone-else@example.com', 'Password123!');
+
+    expect(result.user.role).toBe('USER');
+    expect(users.values[0]?.role).toBe('USER');
+  });
+
+  it('rejects login for a suspended account even if the email is in ADMIN_EMAILS', async () => {
+    const passwordHash = await bcrypt.hash('Password123!', 12);
+    const { service, users } = buildService(null, ['owner@example.com']);
+    const user = await users.create({ email: 'owner@example.com', passwordHash, displayName: 'Owner', englishLevel: 'B1' });
+    user.suspendedAt = new Date();
+
+    await expect(service.login('owner@example.com', 'Password123!')).rejects.toMatchObject({ code: 'USER_SUSPENDED', status: 403 });
+    expect(users.values[0]?.role).toBe('USER');
   });
 });
