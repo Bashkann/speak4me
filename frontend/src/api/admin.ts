@@ -2,7 +2,7 @@ import { http } from '../lib/http';
 import type { EnglishLevel, UserRole } from '../types/api';
 
 export interface AdminStats { users: number; activeRooms: number; sessionsToday: number; queueLength: number }
-export interface AdminUser { id: string; email: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage: string | null; goals: string[]; interests: string[]; role: UserRole; suspendedAt: string | null; createdAt: string }
+export interface AdminUser { id: string; email: string; displayName: string; englishLevel: EnglishLevel; nativeLanguage: string | null; goals: string[]; interests: string[]; role: UserRole; suspendedAt: string | null; createdAt: string; sessionsCompleted: number }
 export interface AdminRoom { id: string; code: string; type: 'matchmade' | 'private'; status: string; currentRound: number | null; roundEndsAt: string | null; createdAt: string; participants: Array<{ userId: string; seat: number; pair: 'A' | 'B'; leftAt: string | null; user: { displayName: string; englishLevel: EnglishLevel } }> }
 export interface AdminReport { id: string; reason: string; createdAt: string; resolvedAt: string | null; roomId: string; reporter: { id: string; displayName: string; email: string }; reportedUser: { id: string; displayName: string; email: string } }
 export type TopicLevel = EnglishLevel | 'ALL';

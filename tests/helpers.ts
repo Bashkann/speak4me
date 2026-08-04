@@ -22,6 +22,7 @@ export const testConfig: AppConfig = {
   TOPIC_OFFER_CAP: 3,
   IMAGE_UPLOADS_ENABLED: false,
   IMAGE_MAX_BYTES: 5 * 1024 * 1024,
+  ADMIN_EMAILS: [],
   LOG_LEVEL: 'silent',
 };
 

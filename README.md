@@ -91,6 +91,7 @@ The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycl
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | optional | OAuth 2.0 credentials from the Google Cloud console; all three `GOOGLE_*` variables are required together |
 | `GOOGLE_REDIRECT_URI` | optional | Must exactly match the backend's `/api/auth/google/callback` URL registered in Google Cloud |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | optional | Password-reset email delivery via the Resend API; without them the reset link is logged instead of emailed |
+| `ADMIN_EMAILS` | optional, comma-separated | Any user with a matching email is promoted to `ADMIN` the next time they log in with their own credentials |
 
 All environment input is validated at startup. Refresh tokens are stored only as SHA-256 hashes and rotate on use.
 
@@ -109,6 +110,13 @@ Text messaging works with no storage configuration. To enable images, create an 
 
 1. Create a [Resend](https://resend.com) account, verify a sending domain, and generate an API key.
 2. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` on Railway. Without them, `POST /api/auth/forgot-password` still issues a reset token but logs the reset link at `info` level instead of emailing it — useful for local development and Railway deploys that haven't configured email yet.
+
+### Admin access
+
+- Set `ADMIN_EMAILS` on Railway to a comma-separated list of email addresses (e.g. `you@example.com`). Anyone who logs in (password or Google) with a matching email is promoted to `ADMIN` in the database at that moment — no code change, redeploy, or manual SQL required. It only ever promotes; removing an email from the list does not demote an existing admin.
+- Every `/api/admin/*` route is protected server-side by `requireAdmin`, which reads the caller's role fresh from the database on every request (the JWT itself carries no role claim), so a promotion or demotion takes effect on the very next request.
+- Reach the panel at `/admin` once your account has the `ADMIN` role; the nav only shows the link to admins, and non-admins are redirected away.
+- `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`/`SEED_ADMIN_DISPLAY_NAME` (above) remain as a one-time seed-script alternative if you'd rather create a dedicated admin account than promote your own.
 
 ## One full session
 
