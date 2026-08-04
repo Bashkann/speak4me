@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSessionHistory } from '../api/rooms';
 import { getApiErrorMessage } from '../lib/api-error';
@@ -8,6 +9,7 @@ import { sendFriendRequest } from '../api/social';
 import { useToastStore } from '../store/toast-store';
 
 export function HistoryPage() {
+  const reducedMotion = useReducedMotion();
   const queryClient = useQueryClient();
   const toast = useToastStore((state) => state.add);
   const [page, setPage] = useState(1);
@@ -43,7 +45,7 @@ export function HistoryPage() {
         {query.data && query.data.items.length > 0 && (
           <div className={`mt-8 space-y-3 transition ${query.isFetching ? 'opacity-60' : ''}`}>
             {query.data.items.map((session, index) => (
-              <article key={session.roomId} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <motion.article key={session.roomId} initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reducedMotion ? 0 : Math.min(index * 0.04, 0.3), duration: reducedMotion ? 0.08 : 0.22 }} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                   <div className="flex gap-4">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-50 font-display text-sm font-extrabold text-brand-700">#{(page - 1) * 10 + index + 1}</span>
@@ -57,7 +59,7 @@ export function HistoryPage() {
                 <div className="mt-5 grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-2">
                   {session.topics.map((topic, topicIndex) => <p key={topic} className="text-sm leading-5 text-slate-600"><span className="mr-2 font-bold text-brand-700">R{topicIndex + 1}</span>{topic}</p>)}
                 </div>
-              </article>
+              </motion.article>
             ))}
           </div>
         )}
