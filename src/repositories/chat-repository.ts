@@ -84,6 +84,17 @@ export class ChatRepository {
     });
   }
 
+  findMessage(id: string) {
+    return this.db.message.findUnique({ where: { id } });
+  }
+
+  softDeleteMessage(id: string) {
+    return this.db.message.update({
+      where: { id },
+      data: { deletedAt: new Date(), body: '', imageUrl: null },
+    });
+  }
+
   async markRead(conversationId: string, userId: string) {
     return this.db.$transaction(async (tx) => {
       const unread = await tx.message.findMany({

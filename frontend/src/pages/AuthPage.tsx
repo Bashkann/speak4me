@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Brand } from '../components/Brand';
-import { login } from '../api/auth';
+import { getAuthProviders, googleSignInUrl, login } from '../api/auth';
 import { getApiErrorMessage } from '../lib/api-error';
 import { useAuthStore } from '../store/auth-store';
+import { useToastStore } from '../store/toast-store';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { OnboardingWizard } from '../components/OnboardingWizard';
 import { FloatingField } from '../components/FloatingField';
@@ -17,6 +18,8 @@ type AuthMode = 'login' | 'register';
 
 export function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const addToast = useToastStore((state) => state.add);
   const setSession = useAuthStore((state) => state.setSession);
   const reducedMotion = useReducedMotion();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -27,6 +30,7 @@ export function AuthPage() {
   const [authComplete, setAuthComplete] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const redirectTimer = useRef<number | null>(null);
+  const providersQuery = useQuery({ queryKey: ['auth-providers'], queryFn: getAuthProviders, staleTime: Infinity });
 
   const mutation = useMutation({
     mutationFn: () => login({ email, password }),
@@ -36,10 +40,14 @@ export function AuthPage() {
   function completeAuth(session: AuthResponse) {
     setSession(session);
     setAuthComplete(true);
-    redirectTimer.current = window.setTimeout(() => navigate('/', { replace: true }), reducedMotion ? 80 : 260);
+    const destination = session.user.needsOnboarding ? '/onboarding' : '/';
+    redirectTimer.current = window.setTimeout(() => navigate(destination, { replace: true }), reducedMotion ? 80 : 260);
   }
 
   useEffect(() => () => { if (redirectTimer.current) window.clearTimeout(redirectTimer.current); }, []);
+  useEffect(() => {
+    if (searchParams.get('error') === 'google_failed') addToast('error', 'Google sign-in did not complete. Please try again.');
+  }, [addToast, searchParams]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -124,6 +132,21 @@ export function AuthPage() {
               ))}
             </div>
 
+            {providersQuery.data?.google && (
+              <div className="mt-7">
+                <a
+                  href={googleSignInUrl()}
+                  className="secondary-button flex w-full items-center justify-center gap-2.5"
+                >
+                  <GoogleIcon />
+                  Continue with Google
+                </a>
+                <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span className="h-px flex-1 bg-slate-200" />or<span className="h-px flex-1 bg-slate-200" />
+                </div>
+              </div>
+            )}
+
             {mode === 'login' ? (
                 <motion.form key="login" noValidate initial={{ opacity: 0, x: reducedMotion ? 0 : -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: reducedMotion ? 0.08 : 0.18 }} className="mt-7 space-y-1" onSubmit={submit}>
                   <motion.div animate={loginErrors.email ? { x: [0, -5, 4, -3, 0] } : { x: 0 }} transition={{ duration: reducedMotion ? 0 : 0.28 }}>
@@ -132,6 +155,9 @@ export function AuthPage() {
                   <motion.div animate={loginErrors.password ? { x: [0, -5, 4, -3, 0] } : { x: 0 }} transition={{ duration: reducedMotion ? 0 : 0.28 }}>
                     <FloatingField id="password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)} onChange={(event) => { setPassword(event.target.value); setLoginErrors((current) => ({ ...current, password: undefined })); mutation.reset(); }} error={loginErrors.password} endAdornment={<motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => setShowPassword((value) => !value)} className="min-w-14 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}><AnimatePresence mode="wait" initial={false}><motion.span key={showPassword ? 'hide' : 'show'} initial={{ opacity: 0, y: reducedMotion ? 0 : 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -3 }} transition={{ duration: 0.12 }}>{showPassword ? 'Hide' : 'Show'}</motion.span></AnimatePresence></motion.button>} />
                   </motion.div>
+                  <div className="flex justify-end pt-1">
+                    <Link to="/auth/forgot-password" className="text-xs font-bold text-brand-700">Forgot password?</Link>
+                  </div>
                   <div className="min-h-[3.6rem] pt-1">
                     <AnimatePresence initial={false}>{mutation.isError && <motion.div role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{getApiErrorMessage(mutation.error, 'Unable to sign in.')}</motion.div>}</AnimatePresence>
                   </div>
@@ -150,5 +176,16 @@ export function AuthPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+    </svg>
   );
 }

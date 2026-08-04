@@ -6,8 +6,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthPage } from './AuthPage';
 import { useAuthStore } from '../store/auth-store';
 
-const authMocks = vi.hoisted(() => ({ register: vi.fn(), login: vi.fn() }));
-vi.mock('../api/auth', () => ({ register: authMocks.register, login: authMocks.login }));
+const authMocks = vi.hoisted(() => ({ register: vi.fn(), login: vi.fn(), getAuthProviders: vi.fn().mockResolvedValue({ google: false }), googleSignInUrl: vi.fn().mockReturnValue('https://api.example.com/api/auth/google') }));
+vi.mock('../api/auth', () => ({ register: authMocks.register, login: authMocks.login, getAuthProviders: authMocks.getAuthProviders, googleSignInUrl: authMocks.googleSignInUrl }));
 
 describe('AuthPage', () => {
   afterEach(() => {
@@ -19,7 +19,7 @@ describe('AuthPage', () => {
 
   it('submits the backend-compatible registration shape and stores the session', async () => {
     authMocks.register.mockResolvedValue({
-      user: { id: 'user-1', email: 'learner@example.com', handle: 'test_learner', displayName: 'Test Learner', englishLevel: 'B2', nativeLanguage: 'Turkish', goals: ['travel'], interests: ['technology'], role: 'USER' },
+      user: { id: 'user-1', email: 'learner@example.com', handle: 'test_learner', displayName: 'Test Learner', englishLevel: 'B2', nativeLanguage: 'Turkish', goals: ['travel'], interests: ['technology'], role: 'USER', avatarUrl: null, needsOnboarding: false },
       accessToken: 'access-token', refreshToken: 'refresh-token',
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });

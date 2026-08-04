@@ -1,4 +1,5 @@
-import type { EnglishLevel } from '@prisma/client';
+import type { EnglishLevel, User } from '@prisma/client';
+import { needsOnboarding } from '../domain/onboarding';
 import { AppError } from '../lib/errors';
 import { UserRepository } from '../repositories/user-repository';
 
@@ -8,22 +9,15 @@ export class MeService {
   async get(userId: string) {
     const user = await this.users.findById(userId);
     if (!user) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
-    return {
-      id: user.id,
-      email: user.email,
-      handle: user.handle,
-      displayName: user.displayName,
-      englishLevel: user.englishLevel,
-      nativeLanguage: user.nativeLanguage,
-      goals: user.goals,
-      interests: user.interests,
-      role: user.role,
-      createdAt: user.createdAt,
-    };
+    return this.publicUser(user);
   }
 
   async update(userId: string, data: { displayName?: string; englishLevel?: EnglishLevel; nativeLanguage?: string | null; goals?: string[]; interests?: string[] }) {
     const user = await this.users.updateProfile(userId, data);
+    return this.publicUser(user);
+  }
+
+  private publicUser(user: User) {
     return {
       id: user.id,
       email: user.email,
@@ -35,6 +29,8 @@ export class MeService {
       interests: user.interests,
       role: user.role,
       createdAt: user.createdAt,
+      avatarUrl: user.avatarUrl,
+      needsOnboarding: needsOnboarding(user),
     };
   }
 

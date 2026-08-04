@@ -8,15 +8,16 @@ import { FloatingField } from './FloatingField';
 import { CharacterBuddy } from './character/CharacterBuddy';
 import type { CharacterMood, CharacterProp } from './character/character-registry';
 
-const goals = [
+export const onboardingGoals = [
   ['exam-prep', 'Exam prep', 'IELTS, TOEFL or YDS'],
   ['travel', 'Travel', 'Speak with confidence abroad'],
   ['work-business', 'Work & business', 'Meetings, interviews and networking'],
   ['moving-abroad', 'Moving abroad', 'Prepare for everyday life'],
   ['just-for-fun', 'Just for fun', 'Enjoy relaxed conversations'],
 ] as const;
+const goals = onboardingGoals;
 
-const levels: Array<[EnglishLevel, string, string]> = [
+export const onboardingLevels: Array<[EnglishLevel, string, string]> = [
   ['A1', 'Beginner', 'I can use a few familiar words and phrases.'],
   ['A2', 'Elementary', 'I can handle simple everyday exchanges.'],
   ['B1', 'Intermediate', 'I can explain experiences and opinions.'],
@@ -24,9 +25,12 @@ const levels: Array<[EnglishLevel, string, string]> = [
   ['C1', 'Advanced', 'I can express ideas fluently and precisely.'],
   ['C2', 'Proficient', 'I can communicate naturally in complex situations.'],
 ];
+const levels = onboardingLevels;
 
-const interests = ['technology', 'travel', 'movies & series', 'sports', 'business', 'daily life', 'science', 'culture', 'music', 'food'];
-const languages = ['Arabic', 'Azerbaijani', 'Chinese', 'Dutch', 'English', 'French', 'German', 'Greek', 'Hindi', 'Italian', 'Japanese', 'Korean', 'Kurdish', 'Persian', 'Polish', 'Portuguese', 'Russian', 'Spanish', 'Turkish', 'Ukrainian', 'Vietnamese'];
+export const onboardingInterests = ['technology', 'travel', 'movies & series', 'sports', 'business', 'daily life', 'science', 'culture', 'music', 'food'];
+const interests = onboardingInterests;
+export const onboardingLanguages = ['Arabic', 'Azerbaijani', 'Chinese', 'Dutch', 'English', 'French', 'German', 'Greek', 'Hindi', 'Italian', 'Japanese', 'Korean', 'Kurdish', 'Persian', 'Polish', 'Portuguese', 'Russian', 'Spanish', 'Turkish', 'Ukrainian', 'Vietnamese'];
+const languages = onboardingLanguages;
 const goalIcons: Record<string, string> = { 'exam-prep': '♟', travel: '✈', 'work-business': '▣', 'moving-abroad': '⌂', 'just-for-fun': '☺' };
 
 interface Draft extends RegisterInput {
@@ -123,11 +127,11 @@ function AccountStep({ draft, setDraft, reducedMotion, onPasswordFocus }: { draf
   return <div><div className="mb-3 flex items-center gap-3 rounded-2xl bg-brand-50 px-3 py-2.5"><motion.span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-600 text-sm font-extrabold text-white shadow-sm" animate={{ rotate: reducedMotion ? 0 : completeCount === 3 ? [0, -5, 5, 0] : 0, scale: 1 + completeCount * 0.025 }} transition={{ duration: 0.28 }}>{completeCount}/3</motion.span><div><p className="text-xs font-extrabold text-brand-800">Your buddy is following along</p><p className="mt-0.5 text-[11px] text-brand-700">{completeCount} of 3 account details ready</p></div></div><div className="space-y-0"><FloatingField id="onboarding-name" label="Display name" autoComplete="name" value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} /><FloatingField id="onboarding-email" label="Email address" type="email" autoComplete="email" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} /><FloatingField id="onboarding-password" label="Password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={8} value={draft.password} onFocus={() => onPasswordFocus(true)} onBlur={() => onPasswordFocus(false)} onChange={(event) => setDraft((current) => ({ ...current, password: event.target.value }))} endAdornment={<button type="button" onClick={() => setShowPassword((current) => !current)} className="rounded-lg px-2 py-1.5 text-xs font-bold text-brand-700" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>} /></div></div>;
 }
 
-function ChoiceCards({ options, selected, onToggle, reducedMotion }: { options: ReadonlyArray<readonly [string, string, string]>; selected: string[]; onToggle: (value: string) => void; reducedMotion: boolean }) {
+export function ChoiceCards({ options, selected, onToggle, reducedMotion }: { options: ReadonlyArray<readonly [string, string, string]>; selected: string[]; onToggle: (value: string) => void; reducedMotion: boolean }) {
   return <div className="grid gap-2 sm:grid-cols-2">{options.map(([value, label, detail], index) => { const active = selected.includes(value); return <motion.button key={value} type="button" aria-pressed={active} onClick={() => onToggle(value)} initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reducedMotion ? 0 : index * 0.025 }} whileHover={reducedMotion ? undefined : { y: -2 }} whileTap={reducedMotion ? undefined : { scale: 0.985 }} className={`relative rounded-2xl border p-3.5 text-left transition-colors ${active ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-100' : 'border-slate-200 bg-white hover:border-brand-200'}`}><div className="flex items-start gap-3"><motion.span aria-hidden="true" className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-base ${active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`} animate={active && !reducedMotion ? goalIconAnimation(value) : { x: 0, y: 0, rotate: 0, scale: 1 }} transition={{ duration: 0.24 }}>{goalIcons[value]}</motion.span><span><span className="block text-sm font-extrabold text-ink">{label}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span></span></div><AnimatePresence>{active && <motion.span initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.6 }} className="absolute right-2.5 top-2.5 grid h-5 w-5 place-items-center rounded-full bg-brand-600 text-[10px] font-bold text-white">✓</motion.span>}</AnimatePresence></motion.button>; })}</div>;
 }
 
-function LevelStep({ value, onChange, reducedMotion }: { value: EnglishLevel; onChange: (value: EnglishLevel) => void; reducedMotion: boolean }) {
+export function LevelStep({ value, onChange, reducedMotion }: { value: EnglishLevel; onChange: (value: EnglishLevel) => void; reducedMotion: boolean }) {
   const [hovered, setHovered] = useState<EnglishLevel | null>(null);
   const preview = hovered ?? value;
   const previewIndex = levels.findIndex(([level]) => level === preview);
@@ -135,11 +139,11 @@ function LevelStep({ value, onChange, reducedMotion }: { value: EnglishLevel; on
   return <div><div className="rounded-2xl bg-slate-50 p-3"><div className="flex gap-1.5" aria-hidden="true">{levels.map(([level], index) => <span key={level} className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200"><motion.span className="block h-full origin-left rounded-full bg-brand-500" animate={{ scaleX: index <= previewIndex ? 1 : 0 }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 480, damping: 40 }} /></span>)}</div><div className="mt-3 min-h-11"><AnimatePresence mode="wait" initial={false}><motion.div key={preview} initial={{ opacity: 0, x: reducedMotion ? 0 : 5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0.06 : 0.15 }}><p className="text-xs font-extrabold text-brand-800">{preview} · {previewMeta[1]}</p><p className="mt-1 text-xs text-slate-500">{previewMeta[2]}</p></motion.div></AnimatePresence></div></div><div className="mt-3 grid grid-cols-3 gap-2">{levels.map(([level, label]) => <motion.button key={level} type="button" aria-pressed={value === level} onHoverStart={() => setHovered(level)} onHoverEnd={() => setHovered(null)} onFocus={() => setHovered(level)} onBlur={() => setHovered(null)} onClick={() => onChange(level)} whileTap={reducedMotion ? undefined : { scale: 0.96 }} className={`rounded-xl border px-2 py-2.5 text-center transition-colors ${value === level ? 'border-brand-500 bg-brand-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'}`}><span className="block font-display text-base font-extrabold">{level}</span><span className={`mt-0.5 block truncate text-[9px] font-bold ${value === level ? 'text-brand-100' : 'text-slate-400'}`}>{label}</span></motion.button>)}</div><motion.button type="button" animate={!reducedMotion && value !== 'B1' ? { scale: [1, 1.015, 1] } : undefined} transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 2 }} className="mt-3 w-full rounded-xl border border-dashed border-brand-300 bg-brand-50 p-2 text-xs font-bold text-brand-800" onClick={() => onChange('B1')}>Not sure? Start with B1 · recommended</motion.button></div>;
 }
 
-function LanguageStep({ search, setSearch, filtered, value, onChange, reducedMotion }: { search: string; setSearch: (value: string) => void; filtered: string[]; value: string; onChange: (value: string) => void; reducedMotion: boolean }) {
+export function LanguageStep({ search, setSearch, filtered, value, onChange, reducedMotion }: { search: string; setSearch: (value: string) => void; filtered: string[]; value: string; onChange: (value: string) => void; reducedMotion: boolean }) {
   return <div><div className="flex items-start gap-3"><motion.span aria-hidden="true" className="mt-1 grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-sky-50 text-xl" animate={reducedMotion ? undefined : { rotate: value ? [0, -8, 8, 0] : 0 }} transition={{ duration: 0.28 }}>◎</motion.span><div className="flex-1"><FloatingField id="language-search" label="Search languages" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pr-1">{filtered.map((language, index) => <motion.button key={language} type="button" onClick={() => onChange(language)} initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reducedMotion ? 0 : Math.min(index, 9) * 0.018 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors ${value === language ? 'border-brand-400 bg-brand-50 text-brand-800 ring-2 ring-brand-100' : 'border-slate-200 bg-white text-slate-600'}`}><span aria-hidden="true" className="mr-1.5 text-brand-500">•</span>{language}</motion.button>)}{filtered.length === 0 && <div className="col-span-2 flex items-center justify-center gap-3 py-5 text-left"><CharacterBuddy mood="searching" size="xs" /><p className="text-sm text-slate-400">No language matches that search.</p></div>}</div></div>;
 }
 
-function ChipStep({ options, selected, onToggle, reducedMotion }: { options: string[]; selected: string[]; onToggle: (value: string) => void; reducedMotion: boolean }) {
+export function ChipStep({ options, selected, onToggle, reducedMotion }: { options: string[]; selected: string[]; onToggle: (value: string) => void; reducedMotion: boolean }) {
   return <div><p className="mb-4 text-sm leading-6 text-slate-500">Pick at least one. These help shape your profile and future conversation recommendations.</p><div className="relative flex flex-wrap gap-2">{options.map((option) => { const active = selected.includes(option); return <motion.button key={option} type="button" aria-pressed={active} onClick={() => onToggle(option)} animate={{ scale: 1 }} whileTap={reducedMotion ? undefined : { scale: 0.9 }} transition={{ type: 'spring', stiffness: 520, damping: 28 }} className={`rounded-full border px-4 py-2.5 text-sm font-bold capitalize transition-colors ${active ? 'border-brand-500 bg-brand-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'}`}>{active && <motion.span initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }} className="mr-1.5 inline-block">✓</motion.span>}{option}</motion.button>; })}<AnimatePresence>{selected.length > 0 && <motion.div aria-hidden="true" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="pointer-events-none absolute -right-1 -top-6 flex gap-1">{[0, 1, 2].map((item) => <motion.span key={item} className="h-1.5 w-1.5 rounded-full bg-brand-400" animate={reducedMotion ? undefined : { x: [0, item - 1, 0], y: [0, -4 - item, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.45, delay: item * 0.05 }} />)}</motion.div>}</AnimatePresence></div><motion.p initial={false} animate={{ opacity: selected.length ? 1 : 0 }} className="mt-5 text-xs font-bold text-brand-700">{selected.length ? `${selected.length} topic${selected.length === 1 ? '' : 's'} selected · nice choice` : ''}</motion.p></div>;
 }
 
@@ -154,9 +158,9 @@ function goalIconAnimation(value: string) {
   if (value === 'work-business') return { x: 0, y: 0, rotate: [0, -5, 5, 0], scale: [1, 0.94, 1] };
   return { x: 0, y: 0, rotate: 0, scale: [1, 1.12, 1] };
 }
-function toggle(values: string[], value: string): string[] { return values.includes(value) ? values.filter((item) => item !== value) : [...values, value]; }
-function labelize(value: string): string { return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-function goalBuddyProp(value: string): CharacterProp {
+export function toggle(values: string[], value: string): string[] { return values.includes(value) ? values.filter((item) => item !== value) : [...values, value]; }
+export function labelize(value: string): string { return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+export function goalBuddyProp(value: string): CharacterProp {
   if (value === 'travel') return 'travel';
   if (value === 'exam-prep') return 'exam';
   if (value === 'work-business') return 'work';

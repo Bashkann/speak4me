@@ -49,6 +49,11 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.post('/auth/login', authLimit, asyncHandler(controllers.auth.login));
   api.post('/auth/refresh', authLimit, asyncHandler(controllers.auth.refresh));
   api.post('/auth/logout', authLimit, asyncHandler(controllers.auth.logout));
+  api.get('/auth/providers', controllers.auth.providers);
+  api.get('/auth/google', authLimit, controllers.auth.googleStart);
+  api.get('/auth/google/callback', authLimit, asyncHandler(controllers.auth.googleCallback));
+  api.post('/auth/forgot-password', authLimit, asyncHandler(controllers.auth.forgotPassword));
+  api.post('/auth/reset-password', authLimit, asyncHandler(controllers.auth.resetPassword));
 
   api.use(authenticate, userLimit);
   api.get('/me', asyncHandler(controllers.me.get));
@@ -78,6 +83,7 @@ export function createApiRouter(controllers: Controllers, authenticate: RequestH
   api.post('/conversations', asyncHandler(controllers.chat.open));
   api.get('/conversations/:id/messages', asyncHandler(controllers.chat.history));
   api.post('/conversations/:id/messages', messageLimit, asyncHandler(controllers.chat.send));
+  api.delete('/conversations/:id/messages/:messageId', asyncHandler(controllers.chat.deleteMessage));
   api.post('/conversations/:id/read', asyncHandler(controllers.chat.read));
   api.get('/uploads/config', asyncHandler(controllers.uploads.config));
   api.post('/uploads/sign', messageLimit, asyncHandler(controllers.uploads.sign));

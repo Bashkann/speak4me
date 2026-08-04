@@ -12,6 +12,8 @@ export interface User {
   interests: string[];
   role: UserRole;
   createdAt?: string;
+  avatarUrl: string | null;
+  needsOnboarding: boolean;
 }
 
 export interface AuthTokens {

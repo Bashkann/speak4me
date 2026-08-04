@@ -85,6 +85,23 @@ export function useLiveKitAudio({ roomId, enabled, shouldPublish }: UseLiveKitAu
       setMicrophoneError(humanizeMediaError(error));
     });
 
+    if (import.meta.env.DEV) {
+      const tag = (event: string) => `[livekit:${roomId}] ${event}`;
+      livekitRoom.on(RoomEvent.ConnectionStateChanged, (state) => console.debug(tag('connectionState'), state));
+      livekitRoom.on(RoomEvent.Reconnecting, () => console.debug(tag('reconnecting')));
+      livekitRoom.on(RoomEvent.Reconnected, () => console.debug(tag('reconnected')));
+      livekitRoom.on(RoomEvent.SignalConnected, () => console.debug(tag('signalConnected')));
+      livekitRoom.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => console.debug(tag('connectionQuality'), { participant: participant.identity, quality }));
+      livekitRoom.on(RoomEvent.LocalTrackPublished, (publication) => console.debug(tag('localTrackPublished'), { sid: publication.trackSid, source: publication.source }));
+      livekitRoom.on(RoomEvent.LocalTrackUnpublished, (publication) => console.debug(tag('localTrackUnpublished'), { sid: publication.trackSid, source: publication.source }));
+      livekitRoom.on(RoomEvent.TrackPublished, (publication, participant) => console.debug(tag('remoteTrackPublished'), { participant: participant.identity, sid: publication.trackSid, source: publication.source }));
+      livekitRoom.on(RoomEvent.TrackSubscribed, (_track, publication, participant) => console.debug(tag('trackSubscribed'), { participant: participant.identity, sid: publication.trackSid }));
+      livekitRoom.on(RoomEvent.TrackSubscriptionFailed, (sid, participant) => console.debug(tag('trackSubscriptionFailed'), { participant: participant.identity, sid }));
+      livekitRoom.on(RoomEvent.TrackUnsubscribed, (_track, publication, participant) => console.debug(tag('trackUnsubscribed'), { participant: participant.identity, sid: publication.trackSid }));
+      livekitRoom.on(RoomEvent.AudioPlaybackStatusChanged, () => console.debug(tag('audioPlaybackStatus'), { canPlaybackAudio: livekitRoom.canPlaybackAudio }));
+      livekitRoom.on(RoomEvent.ParticipantPermissionsChanged, (_prev, participant) => console.debug(tag('permissionsChanged'), { participant: participant.identity, canPublish: participant.permissions?.canPublish }));
+    }
+
     const connect = async () => {
       try {
         setConnectionState(ConnectionState.Connecting);

@@ -87,12 +87,28 @@ The tests include pure matchmaking/state/disconnect rules, an HTTP auth lifecycl
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | required when enabled | Server-only object-store credentials |
 | `S3_PUBLIC_BASE_URL` | required when enabled | Public HTTPS base URL used in persisted messages |
 | `LOG_LEVEL` | `info` | Pino log level |
+| `FRONTEND_URL` | falls back to the first `CORS_ORIGIN` | Where OAuth and password-reset redirects/links point back to |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | optional | OAuth 2.0 credentials from the Google Cloud console; all three `GOOGLE_*` variables are required together |
+| `GOOGLE_REDIRECT_URI` | optional | Must exactly match the backend's `/api/auth/google/callback` URL registered in Google Cloud |
+| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | optional | Password-reset email delivery via the Resend API; without them the reset link is logged instead of emailed |
 
 All environment input is validated at startup. Refresh tokens are stored only as SHA-256 hashes and rotate on use.
 
 ### Optional image messages
 
 Text messaging works with no storage configuration. To enable images, create an S3-compatible bucket, expose objects through a public HTTPS base URL, and set all image variables above. Configure the bucket's CORS policy to allow `PUT` from the exact frontend origin with the `Content-Type` header. The API signs five-minute, size-bound image PUTs and records a one-use upload grant; clients cannot attach arbitrary image URLs. Production uploads never touch Railway's ephemeral filesystem. If any required value is absent, startup rejects `IMAGE_UPLOADS_ENABLED=true`; with the default `false`, the image button stays hidden.
+
+### Optional Google sign-in
+
+1. In the [Google Cloud console](https://console.cloud.google.com/apis/credentials), create an OAuth 2.0 Client ID (Web application). Add `https://YOUR-API-DOMAIN/api/auth/google/callback` as an authorized redirect URI (and `http://localhost:3000/api/auth/google/callback` for local development).
+2. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` on Railway (backend), and `FRONTEND_URL` to the deployed Vercel origin so the callback can redirect back to the app. No Google credentials are ever exposed to the frontend build.
+3. If any of the three `GOOGLE_*` variables are unset, startup treats Google sign-in as disabled: `GET /api/auth/providers` reports `{ google: false }` and the frontend hides the "Continue with Google" button. Email/password auth is unaffected either way.
+4. A Google sign-in with a verified email matching an existing password account links the two automatically; existing password logins keep working.
+
+### Optional password-reset email
+
+1. Create a [Resend](https://resend.com) account, verify a sending domain, and generate an API key.
+2. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` on Railway. Without them, `POST /api/auth/forgot-password` still issues a reset token but logs the reset link at `info` level instead of emailing it — useful for local development and Railway deploys that haven't configured email yet.
 
 ## One full session
 
