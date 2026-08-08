@@ -85,4 +85,22 @@ describe('auth art-direction previews', () => {
     await user.click(screen.getByLabelText('Password'));
     expect(screen.getByTestId('selected-kinetic-mascot')).toHaveAttribute('data-motion-state', 'password');
   });
+
+  it('offers exactly three original Warm mascots with registration and form reactions', async () => {
+    const user = userEvent.setup();
+    renderPreview(<WarmAuthPreviewPage />, '/auth-preview/warm');
+
+    const candidates = screen.getByRole('group', { name: 'Warm mascot candidates' });
+    expect(within(candidates).getAllByRole('button')).toHaveLength(3);
+
+    await user.click(within(candidates).getByRole('button', { name: /Pufi/ }));
+    expect(screen.getByTestId('selected-warm-mascot')).toHaveAttribute('data-mascot-id', 'pufi');
+
+    const moments = screen.getByRole('group', { name: 'Warm registration animation moments' });
+    await user.click(within(moments).getByRole('button', { name: 'Goals' }));
+    expect(screen.getByTestId('selected-warm-mascot')).toHaveAttribute('data-motion-state', 'goals');
+
+    await user.click(screen.getByLabelText('Password'));
+    expect(screen.getByTestId('selected-warm-mascot')).toHaveAttribute('data-motion-state', 'password');
+  });
 });

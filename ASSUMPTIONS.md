@@ -9,6 +9,7 @@
 - Bundle comparisons use Vite production-build gzip output. Each quoted direction cost includes the shared preview-only JS/CSS loaded on first opening any preview plus that direction’s own lazy route chunk; none of those assets are requested by the production `/auth` route.
 - Direction B’s mascot lab is deliberately a selection prototype inside the existing preview, not a production character replacement. Eko, Orbi, and Kip are original CSS-built characters with no copied brand art, external asset, or new runtime dependency.
 - The B prototype exposes the animation contract intended for a later registration rollout: account, password privacy, goals, level, interests, completion, loading, and gentle error states. The preview login fields already drive that same contract, but the unchanged production registration wizard will only adopt the selected character after the owner chooses one.
+- Direction C’s companion lab follows the same selection-only contract with three new, original CSS-built characters: Mimo, Pufi, and Lumi. Their softer shapes, warmer palette, and calmer motion belong specifically to the warm-hybrid direction; production registration remains unchanged until the owner selects a final B or C character.
 
 ## Friends and direct-message decisions
 
