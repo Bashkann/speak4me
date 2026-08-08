@@ -1,5 +1,16 @@
 # Frontend assumptions and backend compatibility
 
+## Auth art-direction previews (2026-08-09)
+
+- The three concepts are additive review surfaces at `/auth-preview/liquid`, `/auth-preview/kinetic`, and `/auth-preview/warm`; `/auth` remains the production login/registration experience and is not restyled or redirected.
+- “Working auth/login variant” means each preview performs the existing email/password login, Google-provider discovery, Google redirect, password recovery link, session storage, and post-login navigation. Registration intentionally remains on the unchanged production auth route so this design experiment cannot fork onboarding behavior.
+- The concepts share one small login controller/form and one comparison toolbar, while their hero composition, motion, palette, mascot prominence, and route modules remain separate. A follow-up can therefore mix a chosen shell with another direction’s mascot or typography without changing auth services.
+- Light/dark comparison uses the existing persisted theme store. Motion uses Framer Motion’s `useReducedMotion()` plus the existing global reduced-motion CSS override; decorative movement carries no information and has a static fallback.
+- Bundle comparisons use Vite production-build gzip output. Each quoted direction cost includes the shared preview-only JS/CSS loaded on first opening any preview plus that direction’s own lazy route chunk; none of those assets are requested by the production `/auth` route.
+- Direction B’s mascot lab is deliberately a selection prototype inside the existing preview, not a production character replacement. Eko, Orbi, and Kip are original CSS-built characters with no copied brand art, external asset, or new runtime dependency.
+- The B prototype exposes the animation contract intended for a later registration rollout: account, password privacy, goals, level, interests, completion, loading, and gentle error states. The preview login fields already drive that same contract, but the unchanged production registration wizard will only adopt the selected character after the owner chooses one.
+- Direction C’s companion lab follows the same selection-only contract with three new, original CSS-built characters: Mimo, Pufi, and Lumi. Their softer shapes, warmer palette, and calmer motion belong specifically to the warm-hybrid direction; production registration remains unchanged until the owner selects a final B or C character.
+
 ## Friends and direct-message decisions
 
 - Registration derives a public, unique handle from the display name plus a random suffix. Existing accounts receive a non-email, ID-derived handle in the migration; changing handles is intentionally not part of this release.
