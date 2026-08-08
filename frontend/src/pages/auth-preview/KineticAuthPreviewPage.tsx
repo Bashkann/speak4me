@@ -1,11 +1,18 @@
+import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { CharacterBuddy } from '../../components/character/CharacterBuddy';
 import { PreviewLoginForm, PreviewToolbar } from './AuthPreviewShared';
+import { KineticMascotLab, type KineticMascotId, type MascotMotionState } from './KineticMascotLab';
 
 const headline = ['Your voice', 'belongs', 'in the room.'];
 
 export function KineticAuthPreviewPage() {
   const reducedMotion = useReducedMotion();
+  const [selectedMascot, setSelectedMascot] = useState<KineticMascotId>('eko');
+  const [mascotState, setMascotState] = useState<MascotMotionState>('hello');
+
+  const handleFormInteraction = (state: 'idle' | 'account' | 'password' | 'loading' | 'success' | 'error') => {
+    setMascotState(state === 'idle' ? 'hello' : state);
+  };
 
   return (
     <main className="art-preview art-preview--kinetic">
@@ -32,10 +39,7 @@ export function KineticAuthPreviewPage() {
             ))}
           </h1>
           <p className="kinetic-deck">No audience. No endless feed. Just a small room built to get you talking.</p>
-          <div className="kinetic-buddy-note">
-            <CharacterBuddy mood="wave" size="sm" />
-            <span><strong>Warm-up ready</strong>Matched by English level</span>
-          </div>
+          <KineticMascotLab selected={selectedMascot} state={mascotState} onSelect={setSelectedMascot} onStateChange={setMascotState} />
         </section>
 
         <motion.aside
@@ -60,7 +64,8 @@ export function KineticAuthPreviewPage() {
           eyebrow="Next room starts with you"
           title="Ready when you are."
           description="Bring your English. We’ll bring the structure."
-          footer={<p className="preview-direction-note">Editorial energy, with the buddy in a supporting role.</p>}
+          onInteractionStateChange={handleFormInteraction}
+          footer={<p className="preview-direction-note">Focus the fields to see the selected mascot react in real time.</p>}
         />
       </div>
     </main>

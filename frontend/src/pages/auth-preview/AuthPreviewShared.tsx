@@ -17,6 +17,7 @@ interface PreviewLoginFormProps {
   title: string;
   description: string;
   footer?: ReactNode;
+  onInteractionStateChange?: (state: 'idle' | 'account' | 'password' | 'loading' | 'success' | 'error') => void;
 }
 
 const directionLinks: Array<{ direction: AuthPreviewDirection; short: string; label: string }> = [
@@ -51,7 +52,7 @@ export function PreviewToolbar({ current }: { current: AuthPreviewDirection }) {
   );
 }
 
-export function PreviewLoginForm({ direction, eyebrow, title, description, footer }: PreviewLoginFormProps) {
+export function PreviewLoginForm({ direction, eyebrow, title, description, footer, onInteractionStateChange }: PreviewLoginFormProps) {
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
   const reducedMotion = useReducedMotion();
@@ -69,11 +70,13 @@ export function PreviewLoginForm({ direction, eyebrow, title, description, foote
   const mutation = useMutation({
     mutationFn: () => login({ email, password }),
     onSuccess: (session: AuthResponse) => {
+      onInteractionStateChange?.('success');
       setSession(session);
       setAuthComplete(true);
       const destination = session.user.needsOnboarding ? '/onboarding' : '/';
       redirectTimer.current = window.setTimeout(() => navigate(destination, { replace: true }), reducedMotion ? 80 : 260);
     },
+    onError: () => onInteractionStateChange?.('error'),
   });
 
   useEffect(() => () => {
@@ -87,7 +90,11 @@ export function PreviewLoginForm({ direction, eyebrow, title, description, foote
       ...(password.length < 8 ? { password: 'Password must be at least 8 characters.' } : {}),
     };
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
+    if (Object.keys(nextErrors).length) {
+      onInteractionStateChange?.('error');
+      return;
+    }
+    onInteractionStateChange?.('loading');
     mutation.mutate();
   };
 
@@ -122,6 +129,8 @@ export function PreviewLoginForm({ direction, eyebrow, title, description, foote
           type="email"
           autoComplete="email"
           value={email}
+          onFocus={() => onInteractionStateChange?.('account')}
+          onBlur={() => onInteractionStateChange?.('idle')}
           onChange={(event) => {
             setEmail(event.target.value);
             setErrors((current) => ({ ...current, email: undefined }));
@@ -145,6 +154,8 @@ export function PreviewLoginForm({ direction, eyebrow, title, description, foote
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             value={password}
+            onFocus={() => onInteractionStateChange?.('password')}
+            onBlur={() => onInteractionStateChange?.('idle')}
             onChange={(event) => {
               setPassword(event.target.value);
               setErrors((current) => ({ ...current, password: undefined }));
@@ -154,7 +165,7 @@ export function PreviewLoginForm({ direction, eyebrow, title, description, foote
             aria-describedby={errors.password ? `${passwordId}-error` : undefined}
             placeholder="8+ characters"
           />
-          <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+          <button type="button" onClick={() => { setShowPassword((value) => !value); onInteractionStateChange?.('password'); }} aria-label={showPassword ? 'Hide password' : 'Show password'}>
             {showPassword ? 'Hide' : 'Show'}
           </button>
         </div>
