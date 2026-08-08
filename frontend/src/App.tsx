@@ -24,6 +24,9 @@ import { ChatRealtimeProvider } from './components/ChatRealtimeProvider';
 
 const RoomPage = lazy(() => import('./pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((module) => ({ default: module.AdminPage })));
+const LiquidAuthPreviewPage = lazy(() => import('./pages/auth-preview/LiquidAuthPreviewPage').then((module) => ({ default: module.LiquidAuthPreviewPage })));
+const KineticAuthPreviewPage = lazy(() => import('./pages/auth-preview/KineticAuthPreviewPage').then((module) => ({ default: module.KineticAuthPreviewPage })));
+const WarmAuthPreviewPage = lazy(() => import('./pages/auth-preview/WarmAuthPreviewPage').then((module) => ({ default: module.WarmAuthPreviewPage })));
 
 export function App() {
   return (
@@ -32,6 +35,10 @@ export function App() {
       <Routes>
         <Route element={<PublicOnly />}>
           <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
+          <Route path="/auth-preview" element={<Navigate to="/auth-preview/liquid" replace />} />
+          <Route path="/auth-preview/liquid" element={<Suspense fallback={<FullPageLoader label="Opening direction A…" />}><LiquidAuthPreviewPage /></Suspense>} />
+          <Route path="/auth-preview/kinetic" element={<Suspense fallback={<FullPageLoader label="Opening direction B…" />}><KineticAuthPreviewPage /></Suspense>} />
+          <Route path="/auth-preview/warm" element={<Suspense fallback={<FullPageLoader label="Opening direction C…" />}><WarmAuthPreviewPage /></Suspense>} />
           <Route path="/auth/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
           <Route path="/auth/reset-password" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
         </Route>
